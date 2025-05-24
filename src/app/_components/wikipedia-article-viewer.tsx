@@ -293,6 +293,7 @@ export function WikipediaArticleViewer({
 	}, [sanitizedHtml, onLinkClick, onMiddleClick, title]);
 
 	// Update link styles based on loading state and link type
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	useEffect(() => {
 		const container = document.getElementById(
 			`wikipedia-content-${title.replace(/\s+/g, "-")}`,
@@ -393,6 +394,7 @@ export function WikipediaArticleViewer({
 		<div
 			id={`wikipedia-content-${title.replace(/\s+/g, "-")}`}
 			className="wikipedia-article-content prose prose-sm max-w-none"
+			// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
 			dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
 			style={
 				{

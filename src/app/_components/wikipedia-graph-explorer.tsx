@@ -1,140 +1,17 @@
 "use client";
 
-import {
-	ArrowLeft,
-	ChevronLeft,
-	ChevronRight,
-	ExternalLink,
-	Info,
-	Loader2,
-	Plus,
-	Trash2,
-	X,
-} from "lucide-react";
-import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
+import { useCallback, useState } from "react";
 import { api } from "~/trpc/react";
-import {
-	WikipediaArticleViewer,
-	wikipediaStyles,
-} from "./wikipedia-article-viewer";
-
-// Dynamically import ForceGraph2D to avoid SSR issues
-const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
-	ssr: false,
-});
-
-interface WikipediaLink {
-	title: string;
-	url: string;
-}
-
-interface WikipediaFullPageData {
-	title: string;
-	content: string;
-	fullHtml: string;
-	links: WikipediaLink[];
-	url: string;
-}
-
-interface GraphNode {
-	id: string;
-	title: string;
-	content: string;
-	fullHtml: string;
-	url: string;
-	outgoingLinks: WikipediaLink[];
-	expanded: boolean;
-	val: number;
-	color: string;
-}
-
-interface GraphLink {
-	source: string;
-	target: string;
-	id: string;
-}
-
-interface GraphData {
-	nodes: GraphNode[];
-	links: GraphLink[];
-}
-
-const generateNodeColor = (title: string): string => {
-	let hash = 0;
-	for (let i = 0; i < title.length; i++) {
-		hash = title.charCodeAt(i) + ((hash << 5) - hash);
-	}
-	const hue = Math.abs(hash) % 360;
-	return `hsl(${hue}, 70%, 60%)`;
-};
-
-const calculateNodeSize = (
-	content: string,
-	outgoingLinks: WikipediaLink[] = [],
-	isRoot = false,
-): number => {
-	const MIN_SIZE = 6;
-	const MAX_SIZE = 40;
-
-	// Base size on content length (characters)
-	const contentLength = content.length;
-
-	// Use a more aggressive scaling function for better differentiation
-	// Short articles: 200-1000 chars, Medium: 1000-5000, Long: 5000+
-	let scaledSize: number;
-
-	if (contentLength < 500) {
-		// Very short articles - smaller nodes
-		scaledSize = MIN_SIZE + (contentLength / 500) * 8;
-	} else if (contentLength < 2000) {
-		// Short to medium articles
-		scaledSize = MIN_SIZE + 8 + ((contentLength - 500) / 1500) * 12;
-	} else if (contentLength < 10000) {
-		// Medium to long articles
-		scaledSize = MIN_SIZE + 20 + ((contentLength - 2000) / 8000) * 12;
-	} else {
-		// Very long articles - largest nodes
-		scaledSize =
-			MIN_SIZE + 32 + Math.min(8, Math.log(contentLength / 10000) * 4);
-	}
-
-	// Count only Wikipedia article links (filter out external links, files, categories, etc.)
-	const wikipediaLinksCount = outgoingLinks.filter((link) => {
-		const title = link.title.toLowerCase();
-		// Exclude common non-article namespaces
-		return (
-			!title.startsWith("file:") &&
-			!title.startsWith("category:") &&
-			!title.startsWith("template:") &&
-			!title.startsWith("help:") &&
-			!title.startsWith("wikipedia:") &&
-			!title.startsWith("user:") &&
-			!title.startsWith("talk:") &&
-			!title.includes(":") && // Most namespaced pages have colons
-			title.length > 1
-		); // Exclude very short titles
-	}).length;
-
-	// Factor in Wikipedia links - articles with more connections are more important
-	// Scale links count: 0-10 links = no bonus, 10-50 = small bonus, 50+ = larger bonus
-	let linkBonus = 0;
-	if (wikipediaLinksCount > 10) {
-		if (wikipediaLinksCount < 50) {
-			linkBonus = ((wikipediaLinksCount - 10) / 40) * 6; // Up to 6px bonus
-		} else {
-			linkBonus = 6 + Math.min(4, Math.log(wikipediaLinksCount / 50) * 3); // Up to 10px total bonus
-		}
-	}
-
-	// Combine content size and link bonus
-	const finalSize = scaledSize + linkBonus;
-
-	// Clamp to min/max bounds
-	return Math.round(Math.max(MIN_SIZE, Math.min(MAX_SIZE, finalSize)));
-};
+import { WikipediaGraphCanvas } from "./graph/wikipedia-graph-canvas";
+import { WikipediaArticlePanel } from "./panels/wikipedia-article-panel";
+import { WikipediaSearchBar } from "./search/wikipedia-search-bar";
+import type {
+	GraphData,
+	GraphNode,
+	WikipediaFullPageData,
+} from "./types/graph";
+import { calculateNodeSize, generateNodeColor } from "./utils/graph-utils";
+import { wikipediaStyles } from "./wikipedia-article-viewer";
 
 export function WikipediaGraphExplorer() {
 	const [searchQuery, setSearchQuery] = useState("");
@@ -144,37 +21,10 @@ export function WikipediaGraphExplorer() {
 	});
 	const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 	const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
-	const [showInstructions, setShowInstructions] = useState(false);
 	const [panelWidth, setPanelWidth] = useState(700);
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
 	const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const graphRef = useRef<any>(null);
-
-	// Configure d3 forces for better node separation
-	useEffect(() => {
-		if (graphRef.current && graphData.nodes.length > 0) {
-			// Configure the charge (repulsion) force for node separation
-			graphRef.current.d3Force("charge").strength(-1200).distanceMax(300);
-
-			// Configure the link force for connection distance - make it more flexible
-			graphRef.current.d3Force("link").distance(120).strength(0.3);
-
-			// Configure center force to keep nodes from drifting too far
-			graphRef.current.d3Force("center").strength(0.1);
-
-			// Add collision detection for better node spacing
-			const d3 = graphRef.current.d3;
-			if (d3 && d3.forceCollide) {
-				graphRef.current.d3Force("collision", d3.forceCollide().radius(30));
-			}
-
-			// Reheat the simulation to apply the new forces
-			graphRef.current.d3ReheatSimulation();
-		}
-	}, [graphData.nodes.length]);
 
 	const addNodeToGraph = useCallback(
 		(pageData: WikipediaFullPageData, isRoot = false) => {
@@ -239,7 +89,7 @@ export function WikipediaGraphExplorer() {
 
 			const linksToAdd = node.outgoingLinks.slice(0, 10);
 			const newNodes: GraphNode[] = [];
-			const newLinks: GraphLink[] = [];
+			const newLinks: { source: string; target: string; id: string }[] = [];
 
 			for (const link of linksToAdd) {
 				setGraphData((prevData) => {
@@ -289,31 +139,36 @@ export function WikipediaGraphExplorer() {
 		[fetchPage, addNodeToGraph],
 	);
 
-	const handleSearch = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!searchQuery.trim()) return;
-
-		const pageData = await fetchPage({ title: searchQuery.trim() });
+	const handleSearch = async (query: string) => {
+		const pageData = await fetchPage({ title: query });
 		addNodeToGraph(pageData, true);
-		setSearchQuery("");
 	};
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const handleNodeClick = useCallback(
-		(node: any) => {
-			const clickedNode = node as GraphNode;
-
+		(node: GraphNode) => {
 			// Add current node to navigation history if we're switching from another node
-			if (selectedNode && selectedNode.id !== clickedNode.id) {
+			if (selectedNode && selectedNode.id !== node.id) {
 				setNavigationHistory((prev) => [...prev, selectedNode.id]);
 			}
 
-			setSelectedNode(clickedNode);
+			setSelectedNode(node);
 			setIsDetailPanelOpen(true);
 			setIsCollapsed(false);
 		},
 		[selectedNode],
 	);
+
+	const handleNodeRightClick = useCallback(
+		(node: GraphNode) => {
+			expandNode(node);
+		},
+		[expandNode],
+	);
+
+	const handleBackgroundClick = useCallback(() => {
+		setSelectedNode(null);
+		setIsDetailPanelOpen(false);
+	}, []);
 
 	const goBackToParent = useCallback(() => {
 		if (navigationHistory.length === 0) return;
@@ -328,20 +183,6 @@ export function WikipediaGraphExplorer() {
 		}
 	}, [navigationHistory, graphData.nodes]);
 
-	const handleNodeRightClick = useCallback(
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		(node: any) => {
-			expandNode(node as GraphNode);
-		},
-		[expandNode],
-	);
-
-	const handleBackgroundClick = useCallback(() => {
-		setSelectedNode(null);
-		setIsDetailPanelOpen(false);
-	}, []);
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	const handleArticleLinkClick = useCallback(
 		async (title: string) => {
 			if (!selectedNode) return;
@@ -364,17 +205,17 @@ export function WikipediaGraphExplorer() {
 						title,
 					);
 					setSelectedNode(existingNode);
-					setLoadingLinks((prev) => {
-						const newSet = new Set(prev);
-						newSet.delete(title);
-						return newSet;
-					});
 
 					// Add current node to navigation history since we're switching via link click
 					if (selectedNode) {
 						setNavigationHistory((prev) => [...prev, selectedNode.id]);
 					}
 
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
 					return;
 				}
 
@@ -401,17 +242,17 @@ export function WikipediaGraphExplorer() {
 					}));
 
 					setSelectedNode(existingNode);
-					setLoadingLinks((prev) => {
-						const newSet = new Set(prev);
-						newSet.delete(title);
-						return newSet;
-					});
 
 					// Add current node to navigation history since we're switching via link click
 					if (selectedNode) {
 						setNavigationHistory((prev) => [...prev, selectedNode.id]);
 					}
 
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
 					return;
 				}
 
@@ -437,17 +278,17 @@ export function WikipediaGraphExplorer() {
 						actualTitle,
 					);
 					setSelectedNode(existingNodeByActualTitle);
-					setLoadingLinks((prev) => {
-						const newSet = new Set(prev);
-						newSet.delete(title);
-						return newSet;
-					});
 
 					// Add current node to navigation history since we're switching via link click
 					if (selectedNode) {
 						setNavigationHistory((prev) => [...prev, selectedNode.id]);
 					}
 
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
 					return;
 				}
 
@@ -474,17 +315,17 @@ export function WikipediaGraphExplorer() {
 					}));
 
 					setSelectedNode(existingNodeByActualTitle);
-					setLoadingLinks((prev) => {
-						const newSet = new Set(prev);
-						newSet.delete(title);
-						return newSet;
-					});
 
 					// Add current node to navigation history since we're switching via link click
 					if (selectedNode) {
 						setNavigationHistory((prev) => [...prev, selectedNode.id]);
 					}
 
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
 					return;
 				}
 
@@ -538,7 +379,6 @@ export function WikipediaGraphExplorer() {
 		[selectedNode, graphData.nodes, graphData.links, fetchPage],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	const handleArticleMiddleClick = useCallback(
 		async (title: string) => {
 			if (!selectedNode) return;
@@ -737,10 +577,6 @@ export function WikipediaGraphExplorer() {
 		[panelWidth],
 	);
 
-	const toggleCollapse = () => {
-		setIsCollapsed(!isCollapsed);
-	};
-
 	const removeNodeFromGraph = useCallback(
 		(nodeToRemove: GraphNode) => {
 			setGraphData((prevData) => {
@@ -753,11 +589,11 @@ export function WikipediaGraphExplorer() {
 					const sourceId =
 						typeof link.source === "string"
 							? link.source
-							: (link.source as any)?.id || link.source;
+							: (link.source as { id?: string })?.id || link.source;
 					const targetId =
 						typeof link.target === "string"
 							? link.target
-							: (link.target as any)?.id || link.target;
+							: (link.target as { id?: string })?.id || link.target;
 					return sourceId !== nodeToRemove.id && targetId !== nodeToRemove.id;
 				});
 
@@ -777,322 +613,45 @@ export function WikipediaGraphExplorer() {
 	);
 
 	return (
-		<div className="h-screen flex bg-gray-50 relative">
+		<div className="relative flex h-screen bg-gray-50">
 			<style>{wikipediaStyles}</style>
 
-			{/* Floating Search Bar */}
-			<div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-80">
-				<div className="flex items-center gap-2 mb-2">
-					<h2 className="text-lg font-semibold text-gray-900">
-						Wikipedia Graph Explorer
-					</h2>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setShowInstructions(!showInstructions)}
-						className="h-6 w-6"
-					>
-						<Info className="h-4 w-4" />
-					</Button>
-				</div>
+			{/* Search Bar Component */}
+			<WikipediaSearchBar
+				searchQuery={searchQuery}
+				setSearchQuery={setSearchQuery}
+				onSearch={handleSearch}
+				isFetchingPage={isFetchingPage}
+				fetchPageError={fetchPageError}
+				graphData={graphData}
+			/>
 
-				<form onSubmit={handleSearch} className="space-y-3">
-					<div className="flex gap-2">
-						<Input
-							type="text"
-							placeholder="Search Wikipedia to add to graph..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="flex-1"
-							disabled={isFetchingPage}
-						/>
-						<Button
-							type="submit"
-							size="icon"
-							disabled={isFetchingPage || !searchQuery.trim()}
-						>
-							{isFetchingPage ? (
-								<Loader2 className="h-4 w-4 animate-spin" />
-							) : (
-								<Plus className="h-4 w-4" />
-							)}
-						</Button>
-					</div>
+			{/* Graph Canvas Component */}
+			<WikipediaGraphCanvas
+				graphData={graphData}
+				onNodeClick={handleNodeClick}
+				onNodeRightClick={handleNodeRightClick}
+				onBackgroundClick={handleBackgroundClick}
+			/>
 
-					{fetchPageError && (
-						<div className="p-2 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
-							{fetchPageError.message}
-						</div>
-					)}
-				</form>
-
-				{showInstructions && (
-					<div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800 space-y-1">
-						<p className="font-medium">How to explore:</p>
-						<ul className="space-y-1 text-xs">
-							<li>• Search above to add articles to the graph</li>
-							<li>• Click a node to read the full article</li>
-							<li>• Click links in articles to add them to the graph</li>
-							<li>• Right-click nodes to expand their connections</li>
-							<li>• Drag nodes to rearrange the graph</li>
-						</ul>
-					</div>
-				)}
-
-				{graphData.nodes.length > 0 && (
-					<div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">
-						Nodes: {graphData.nodes.length} | Links: {graphData.links.length}
-					</div>
-				)}
-			</div>
-
-			{/* Graph Canvas - Now always takes full width */}
-			<div className="flex-1 relative">
-				<ForceGraph2D
-					ref={graphRef}
+			{/* Article Panel Component */}
+			{selectedNode && (
+				<WikipediaArticlePanel
+					selectedNode={selectedNode}
+					isDetailPanelOpen={isDetailPanelOpen}
+					setIsDetailPanelOpen={setIsDetailPanelOpen}
+					panelWidth={panelWidth}
+					isCollapsed={isCollapsed}
+					setIsCollapsed={setIsCollapsed}
+					navigationHistory={navigationHistory}
 					graphData={graphData}
-					nodeId="id"
-					nodeLabel="title"
-					nodeVal="val"
-					nodeColor="color"
-					d3AlphaDecay={0.01}
-					d3VelocityDecay={0.4}
-					linkDirectionalArrowLength={6}
-					linkDirectionalArrowRelPos={1}
-					linkCurvature={0.05}
-					linkDirectionalParticles={0}
-					linkDirectionalParticleSpeed={0.006}
-					onNodeClick={handleNodeClick}
-					onNodeRightClick={handleNodeRightClick}
-					onBackgroundClick={handleBackgroundClick}
-					width={typeof window !== "undefined" ? window.innerWidth : 800}
-					height={typeof window !== "undefined" ? window.innerHeight : 600}
-					backgroundColor="#fafafa"
-					linkCanvasObjectMode="after"
-					linkCanvasObject={(
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						link: any,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						ctx: any,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						globalScale: any,
-					) => {
-						const MAX_FONT_SIZE = 4;
-						const LABEL_NODE_MARGIN = 1;
-
-						const start = link.source;
-						const end = link.target;
-
-						// Calculate distance and direction
-						const dx = end.x - start.x;
-						const dy = end.y - start.y;
-						const distance = Math.sqrt(dx * dx + dy * dy);
-
-						if (distance < 0.1) return; // Skip very short links
-
-						// Normalize direction
-						const ux = dx / distance;
-						const uy = dy / distance;
-
-						// Calculate where arrow should start and end based on node sizes
-						const startRadius = start.val || 8;
-						const endRadius = end.val || 8;
-
-						const arrowStart = {
-							x: start.x + ux * startRadius,
-							y: start.y + uy * startRadius,
-						};
-
-						const arrowEnd = {
-							x: end.x - ux * (endRadius + 2),
-							y: end.y - uy * (endRadius + 2),
-						};
-
-						// Draw the link line
-						ctx.strokeStyle = "#999";
-						ctx.lineWidth = 2.5 / globalScale;
-						ctx.beginPath();
-						ctx.moveTo(arrowStart.x, arrowStart.y);
-						ctx.lineTo(arrowEnd.x, arrowEnd.y);
-						ctx.stroke();
-
-						// Draw arrowhead
-						const arrowLength = 8 / globalScale;
-						const arrowAngle = Math.PI / 6; // 30 degrees
-
-						const angle = Math.atan2(dy, dx);
-
-						ctx.fillStyle = "#666";
-						ctx.beginPath();
-						ctx.moveTo(arrowEnd.x, arrowEnd.y);
-						ctx.lineTo(
-							arrowEnd.x - arrowLength * Math.cos(angle - arrowAngle),
-							arrowEnd.y - arrowLength * Math.sin(angle - arrowAngle),
-						);
-						ctx.lineTo(
-							arrowEnd.x - arrowLength * Math.cos(angle + arrowAngle),
-							arrowEnd.y - arrowLength * Math.sin(angle + arrowAngle),
-						);
-						ctx.closePath();
-						ctx.fill();
-					}}
-					nodeCanvasObject={(
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						node: any,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						ctx: any,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						globalScale: any,
-					) => {
-						const label = node.title;
-						const fontSize = 12 / globalScale;
-						const nodeRadius = node.val;
-
-						ctx.font = `${fontSize}px Sans-Serif`;
-
-						// Draw node circle
-						ctx.beginPath();
-						ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
-						ctx.fillStyle = node.color;
-						ctx.fill();
-
-						// Add border for expanded nodes
-						if (node.expanded) {
-							ctx.strokeStyle = "#333";
-							ctx.lineWidth = 2 / globalScale;
-							ctx.stroke();
-						}
-
-						// Draw label below the node
-						ctx.textAlign = "center";
-						ctx.textBaseline = "middle";
-						ctx.fillStyle = "#333";
-						ctx.fillText(label, node.x, node.y + nodeRadius + fontSize * 1.2);
-					}}
+					loadingLinks={loadingLinks}
+					onLinkClick={handleArticleLinkClick}
+					onMiddleClick={handleArticleMiddleClick}
+					onRemoveNode={removeNodeFromGraph}
+					onGoBackToParent={goBackToParent}
+					onPanelResize={handlePanelResize}
 				/>
-			</div>
-
-			{/* Overlay Detail Panel - Absolute positioned on top of graph */}
-			{isDetailPanelOpen && selectedNode && (
-				<div
-					className="absolute top-0 right-0 h-full bg-white border-l border-gray-200 flex flex-col shadow-2xl z-20 transition-transform duration-300 ease-in-out"
-					style={{
-						width: isCollapsed ? "60px" : `${panelWidth}px`,
-						transform: isCollapsed ? "translateX(0)" : "translateX(0)",
-					}}
-				>
-					{/* Resize Handle */}
-					<div
-						className="absolute left-0 top-0 w-1 h-full bg-gray-300 hover:bg-blue-500 cursor-col-resize transition-colors duration-200"
-						onMouseDown={handlePanelResize}
-					/>
-
-					{/* Collapse/Expand Button */}
-					<div className="absolute left-2 top-1/2 transform -translate-y-1/2 z-30">
-						<Button
-							variant="outline"
-							size="icon"
-							onClick={toggleCollapse}
-							className="h-8 w-8 bg-white shadow-md hover:shadow-lg"
-						>
-							{isCollapsed ? (
-								<ChevronLeft className="h-4 w-4" />
-							) : (
-								<ChevronRight className="h-4 w-4" />
-							)}
-						</Button>
-					</div>
-
-					{!isCollapsed && (
-						<>
-							{/* Header */}
-							<div className="p-6 border-b border-gray-200 flex items-center justify-between">
-								<div className="flex items-center gap-3 flex-1">
-									<h3 className="text-xl font-semibold text-gray-900 truncate">
-										{selectedNode.title}
-									</h3>
-									{navigationHistory.length > 0 && (
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={goBackToParent}
-											className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
-											title={`Back to ${graphData.nodes.find((n) => n.id === navigationHistory[navigationHistory.length - 1])?.title || "Previous Article"}`}
-										>
-											<ArrowLeft className="h-4 w-4" />
-											Back
-										</Button>
-									)}
-								</div>
-								<div className="flex items-center gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => removeNodeFromGraph(selectedNode)}
-										className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
-									>
-										<Trash2 className="h-4 w-4" />
-										Remove
-									</Button>
-									<Button
-										variant="ghost"
-										size="icon"
-										onClick={() => setIsDetailPanelOpen(false)}
-									>
-										<X className="h-5 w-5" />
-									</Button>
-								</div>
-							</div>
-
-							{/* Content */}
-							<div className="flex-1 overflow-y-auto p-6 space-y-4">
-								<div className="flex items-center gap-3 mb-6">
-									<a
-										href={selectedNode.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="inline-flex items-center gap-2 text-blue-600 hover:underline"
-									>
-										<ExternalLink className="h-4 w-4" />
-										View on Wikipedia
-									</a>
-								</div>
-
-								{/* Full Article Content */}
-								{selectedNode.fullHtml ? (
-									<WikipediaArticleViewer
-										htmlContent={selectedNode.fullHtml}
-										title={selectedNode.title}
-										onLinkClick={handleArticleLinkClick}
-										onMiddleClick={handleArticleMiddleClick}
-										loadingLinks={loadingLinks}
-									/>
-								) : (
-									<div className="text-gray-500 italic">
-										Loading full article content...
-									</div>
-								)}
-							</div>
-						</>
-					)}
-
-					{/* Collapsed state content */}
-					{isCollapsed && (
-						<div className="flex flex-col items-center justify-center h-full p-2">
-							<div className="transform -rotate-90 whitespace-nowrap text-sm font-medium text-gray-600 mb-4">
-								{selectedNode.title}
-							</div>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => setIsDetailPanelOpen(false)}
-								className="mb-2"
-							>
-								<X className="h-4 w-4" />
-							</Button>
-						</div>
-					)}
-				</div>
 			)}
 		</div>
 	);
