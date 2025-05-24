@@ -24,9 +24,9 @@ export default function AnalyticsPage() {
 
 	if (statsLoading) {
 		return (
-			<div className="min-h-screen bg-background flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-background font-chillax">
 				<div className="text-center">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+					<div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-primary border-b-2" />
 					<p className="text-muted-foreground">Loading analytics...</p>
 				</div>
 			</div>
@@ -34,17 +34,17 @@ export default function AnalyticsPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-gray-50">
+		<div className="min-h-screen bg-muted/30">
 			{/* Header */}
-			<div className="bg-white border-b border-gray-200">
-				<div className="max-w-7xl mx-auto px-4 py-6">
+			<div className="border-border border-b bg-card">
+				<div className="mx-auto max-w-7xl px-4 py-6">
 					<div className="flex items-center justify-between">
 						<div>
-							<h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-								<BarChart3 className="h-6 w-6 text-blue-600" />
-								Wikipedia Rabbit Hole Analytics
+							<h1 className="flex items-center gap-2 font-bold text-2xl text-foreground">
+								<BarChart3 className="h-6 w-6 text-primary" />
+								rabbithole
 							</h1>
-							<p className="text-gray-600 mt-1">
+							<p className="mt-1 text-muted-foreground">
 								Discover patterns and insights from shared rabbit holes
 							</p>
 						</div>
@@ -55,41 +55,41 @@ export default function AnalyticsPage() {
 				</div>
 			</div>
 
-			<div className="max-w-7xl mx-auto px-4 py-8">
+			<div className="mx-auto max-w-7xl px-4 py-8">
 				{/* Overview Stats */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+				<div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 					<StatCard
 						icon={<Globe className="h-6 w-6" />}
 						title="Total Rabbit Holes"
 						value={stats?.totalRabbitholes ?? 0}
 						subtitle="Shared explorations"
-						color="blue"
+						color="chart-1"
 					/>
 					<StatCard
 						icon={<Users className="h-6 w-6" />}
 						title="Unique Articles"
 						value={stats?.totalArticles ?? 0}
 						subtitle="Wikipedia pages explored"
-						color="green"
+						color="chart-2"
 					/>
 					<StatCard
 						icon={<TrendingUp className="h-6 w-6" />}
 						title="Total Connections"
 						value={stats?.totalConnections ?? 0}
 						subtitle="Article relationships"
-						color="purple"
+						color="chart-3"
 					/>
 					<StatCard
 						icon={<BarChart3 className="h-6 w-6" />}
 						title="Avg Nodes/Hole"
 						value={stats?.averageNodes ?? 0}
 						subtitle={`Max: ${stats?.maxNodes ?? 0}`}
-						color="orange"
+						color="chart-4"
 					/>
 				</div>
 
 				{/* Analytics Sections */}
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+				<div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
 					{/* Most Popular Articles */}
 					<AnalyticsSection
 						title="Most Popular Articles"
@@ -99,17 +99,17 @@ export default function AnalyticsPage() {
 						{popularArticles?.map((article, index) => (
 							<div
 								key={article.id}
-								className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
 							>
 								<div className="flex items-center gap-3">
-									<div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
+									<div className="flex h-6 w-6 items-center justify-center rounded-full bg-chart-1/10 font-medium text-chart-1 text-sm">
 										{index + 1}
 									</div>
 									<div>
-										<h4 className="font-medium text-gray-900 truncate max-w-xs">
+										<h4 className="max-w-xs truncate font-medium text-foreground">
 											{article.articleTitle}
 										</h4>
-										<p className="text-sm text-gray-500">
+										<p className="text-muted-foreground text-sm">
 											{article.totalAppearances} rabbit holes •{" "}
 											{article.totalConnections} total connections
 										</p>
@@ -119,7 +119,7 @@ export default function AnalyticsPage() {
 									href={article.articleUrl}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-blue-600 hover:text-blue-800"
+									className="text-chart-1 hover:text-chart-1/80"
 								>
 									<ExternalLink className="h-4 w-4" />
 								</a>
@@ -136,17 +136,17 @@ export default function AnalyticsPage() {
 						{connectedArticles?.map((article, index) => (
 							<div
 								key={article.id}
-								className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
 							>
 								<div className="flex items-center gap-3">
-									<div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-sm font-medium">
+									<div className="flex h-6 w-6 items-center justify-center rounded-full bg-chart-2/10 font-medium text-chart-2 text-sm">
 										{index + 1}
 									</div>
 									<div>
-										<h4 className="font-medium text-gray-900 truncate max-w-xs">
+										<h4 className="max-w-xs truncate font-medium text-foreground">
 											{article.articleTitle}
 										</h4>
-										<p className="text-sm text-gray-500">
+										<p className="text-muted-foreground text-sm">
 											{article.averageConnections.toFixed(1)} avg connections •{" "}
 											{article.totalAppearances} appearances
 										</p>
@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
 									href={article.articleUrl}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-green-600 hover:text-green-800"
+									className="text-chart-2 hover:text-chart-2/80"
 								>
 									<ExternalLink className="h-4 w-4" />
 								</a>
@@ -171,26 +171,26 @@ export default function AnalyticsPage() {
 						isLoading={connectionsLoading}
 						className="lg:col-span-2"
 					>
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							{popularConnections?.map((connection, index) => (
 								<div
 									key={connection.id}
-									className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+									className="flex items-center gap-3 rounded-lg bg-muted/50 p-3"
 								>
-									<div className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
+									<div className="flex h-6 w-6 items-center justify-center rounded-full bg-chart-5/10 font-medium text-chart-5 text-sm">
 										{index + 1}
 									</div>
-									<div className="flex-1 min-w-0">
+									<div className="min-w-0 flex-1">
 										<div className="flex items-center gap-2 text-sm">
-											<span className="font-medium text-gray-900 truncate">
+											<span className="truncate font-medium text-foreground">
 												{connection.sourceArticle}
 											</span>
-											<ArrowRight className="h-3 w-3 text-gray-400 flex-shrink-0" />
-											<span className="font-medium text-gray-900 truncate">
+											<ArrowRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+											<span className="truncate font-medium text-foreground">
 												{connection.targetArticle}
 											</span>
 										</div>
-										<p className="text-xs text-gray-500 mt-1">
+										<p className="mt-1 text-muted-foreground text-xs">
 											{connection.connectionCount} rabbit holes
 										</p>
 									</div>
@@ -202,81 +202,83 @@ export default function AnalyticsPage() {
 
 				{/* Additional Stats */}
 				{stats && (
-					<div className="mt-8 bg-white rounded-lg border border-gray-200 p-6">
-						<h3 className="text-lg font-semibold text-gray-900 mb-4">
+					<div className="mt-8 rounded-lg border border-border bg-card p-6">
+						<h3 className="mb-4 font-semibold text-foreground text-lg">
 							Additional Statistics
 						</h3>
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+						<div className="grid grid-cols-1 gap-6 md:grid-cols-3">
 							<div>
-								<h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+								<h4 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
 									Rabbit Hole Size
 								</h4>
 								<div className="mt-2 space-y-1">
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">
+										<span className="text-muted-foreground text-sm">
 											Average nodes:
 										</span>
-										<span className="text-sm font-medium">
+										<span className="font-medium text-foreground text-sm">
 											{stats.averageNodes}
 										</span>
 									</div>
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">
+										<span className="text-muted-foreground text-sm">
 											Average links:
 										</span>
-										<span className="text-sm font-medium">
+										<span className="font-medium text-foreground text-sm">
 											{stats.averageLinks}
 										</span>
 									</div>
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">
+										<span className="text-muted-foreground text-sm">
 											Largest rabbit hole:
 										</span>
-										<span className="text-sm font-medium">
+										<span className="font-medium text-foreground text-sm">
 											{stats.maxNodes} nodes
 										</span>
 									</div>
 								</div>
 							</div>
 							<div>
-								<h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+								<h4 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
 									Engagement
 								</h4>
 								<div className="mt-2 space-y-1">
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">
+										<span className="text-muted-foreground text-sm">
 											Average views:
 										</span>
-										<span className="text-sm font-medium">
+										<span className="font-medium text-foreground text-sm">
 											{stats.averageViews}
 										</span>
 									</div>
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">Most viewed:</span>
-										<span className="text-sm font-medium">
+										<span className="text-muted-foreground text-sm">
+											Most viewed:
+										</span>
+										<span className="font-medium text-foreground text-sm">
 											{stats.maxViews} views
 										</span>
 									</div>
 								</div>
 							</div>
 							<div>
-								<h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+								<h4 className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
 									Network
 								</h4>
 								<div className="mt-2 space-y-1">
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">
+										<span className="text-muted-foreground text-sm">
 											Most connected:
 										</span>
-										<span className="text-sm font-medium">
+										<span className="font-medium text-foreground text-sm">
 											{stats.maxLinks} links
 										</span>
 									</div>
 									<div className="flex justify-between">
-										<span className="text-sm text-gray-600">
+										<span className="text-muted-foreground text-sm">
 											Unique connections:
 										</span>
-										<span className="text-sm font-medium">
+										<span className="font-medium text-foreground text-sm">
 											{stats.totalConnections}
 										</span>
 									</div>
@@ -295,27 +297,28 @@ interface StatCardProps {
 	title: string;
 	value: number;
 	subtitle: string;
-	color: "blue" | "green" | "purple" | "orange";
+	color: "chart-1" | "chart-2" | "chart-3" | "chart-4" | "chart-5";
 }
 
 function StatCard({ icon, title, value, subtitle, color }: StatCardProps) {
 	const colorClasses = {
-		blue: "bg-blue-50 text-blue-600",
-		green: "bg-green-50 text-green-600",
-		purple: "bg-purple-50 text-purple-600",
-		orange: "bg-orange-50 text-orange-600",
+		"chart-1": "bg-chart-1/10 text-chart-1",
+		"chart-2": "bg-chart-2/10 text-chart-2",
+		"chart-3": "bg-chart-3/10 text-chart-3",
+		"chart-4": "bg-chart-4/10 text-chart-4",
+		"chart-5": "bg-chart-5/10 text-chart-5",
 	};
 
 	return (
-		<div className="bg-white rounded-lg border border-gray-200 p-6">
+		<div className="rounded-lg border border-border bg-card p-6">
 			<div className="flex items-center">
-				<div className={`p-2 rounded-lg ${colorClasses[color]}`}>{icon}</div>
+				<div className={`rounded-lg p-2 ${colorClasses[color]}`}>{icon}</div>
 				<div className="ml-4">
-					<h3 className="text-sm font-medium text-gray-500">{title}</h3>
-					<p className="text-2xl font-semibold text-gray-900">
+					<h3 className="font-medium text-muted-foreground text-sm">{title}</h3>
+					<p className="font-semibold text-2xl text-foreground">
 						{value.toLocaleString()}
 					</p>
-					<p className="text-sm text-gray-600">{subtitle}</p>
+					<p className="text-muted-foreground text-sm">{subtitle}</p>
 				</div>
 			</div>
 		</div>
@@ -338,29 +341,27 @@ function AnalyticsSection({
 	className = "",
 }: AnalyticsSectionProps) {
 	return (
-		<div
-			className={`bg-white rounded-lg border border-gray-200 p-6 ${className}`}
-		>
+		<div className={`rounded-lg border border-border bg-card p-6 ${className}`}>
 			<div className="mb-4">
-				<h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-				<p className="text-sm text-gray-600">{subtitle}</p>
+				<h3 className="font-semibold text-foreground text-lg">{title}</h3>
+				<p className="text-muted-foreground text-sm">{subtitle}</p>
 			</div>
 			{isLoading ? (
 				<div className="space-y-3">
 					<div className="animate-pulse">
-						<div className="h-12 bg-gray-100 rounded-lg" />
+						<div className="h-12 rounded-lg bg-muted/50" />
 					</div>
 					<div className="animate-pulse">
-						<div className="h-12 bg-gray-100 rounded-lg" />
+						<div className="h-12 rounded-lg bg-muted/50" />
 					</div>
 					<div className="animate-pulse">
-						<div className="h-12 bg-gray-100 rounded-lg" />
+						<div className="h-12 rounded-lg bg-muted/50" />
 					</div>
 					<div className="animate-pulse">
-						<div className="h-12 bg-gray-100 rounded-lg" />
+						<div className="h-12 rounded-lg bg-muted/50" />
 					</div>
 					<div className="animate-pulse">
-						<div className="h-12 bg-gray-100 rounded-lg" />
+						<div className="h-12 rounded-lg bg-muted/50" />
 					</div>
 				</div>
 			) : (

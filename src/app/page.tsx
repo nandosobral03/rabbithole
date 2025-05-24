@@ -186,39 +186,39 @@ export default function HomePage() {
 	return (
 		<div className="min-h-screen bg-background font-chillax">
 			{/* Header */}
-			<div className="flex justify-end p-4 border-b border-border/50">
+			<div className="flex justify-end border-border/50 border-b p-4">
 				<Link
 					href="/analytics"
-					className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+					className="flex items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground"
 				>
-					<BarChart3 className="w-4 h-4" />
+					<BarChart3 className="h-4 w-4" />
 					Analytics
 				</Link>
 			</div>
 
 			{/* Main Content */}
-			<div className="flex-1 flex items-center justify-center px-6 py-8">
+			<div className="flex flex-1 items-center justify-center px-6 py-8">
 				<div className="w-full max-w-6xl">
-					<div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+					<div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
 						{/* Left Sidebar */}
-						<div className="lg:col-span-3 space-y-6">
+						<div className="space-y-6 lg:col-span-3">
 							{/* Featured Article */}
 							{articleOfTheDay && (
-								<div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-									<div className="flex items-center gap-2 mb-3">
-										<Star className="w-4 h-4 text-amber-500" />
-										<h3 className="font-semibold text-sm text-foreground">
+								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+									<div className="mb-3 flex items-center gap-2">
+										<Star className="h-4 w-4 text-amber-500" />
+										<h3 className="font-semibold text-foreground text-sm">
 											Today's Featured
 										</h3>
 									</div>
 									<button
 										type="button"
 										onClick={handleArticleOfTheDayClick}
-										className="w-full p-3 text-sm bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md text-amber-900 font-medium transition-colors text-left"
+										className="w-full rounded-md border border-amber-200 bg-amber-50 p-3 text-left font-medium text-amber-900 text-sm transition-colors hover:bg-amber-100"
 									>
 										{articleOfTheDay.title}
 									</button>
-									<p className="text-xs text-muted-foreground mt-2">
+									<p className="mt-2 text-muted-foreground text-xs">
 										Click to explore this featured article
 									</p>
 								</div>
@@ -226,24 +226,24 @@ export default function HomePage() {
 
 							{/* Featured Article Error */}
 							{articleOfTheDayError && !articleOfTheDay && (
-								<div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-									<div className="flex items-center gap-2 mb-2">
-										<Star className="w-4 h-4 text-muted-foreground" />
-										<h3 className="font-semibold text-sm text-foreground">
+								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+									<div className="mb-2 flex items-center gap-2">
+										<Star className="h-4 w-4 text-muted-foreground" />
+										<h3 className="font-semibold text-foreground text-sm">
 											Today's Featured
 										</h3>
 									</div>
-									<p className="text-xs text-muted-foreground">
+									<p className="text-muted-foreground text-xs">
 										{articleOfTheDayError}
 									</p>
 								</div>
 							)}
 
 							{/* Popular Topics */}
-							<div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-								<div className="flex items-center gap-2 mb-3">
-									<Rocket className="w-4 h-4 text-blue-500" />
-									<h3 className="font-semibold text-sm text-foreground">
+							<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+								<div className="mb-3 flex items-center gap-2">
+									<Rocket className="h-4 w-4 text-blue-500" />
+									<h3 className="font-semibold text-foreground text-sm">
 										Popular Topics
 									</h3>
 								</div>
@@ -253,7 +253,7 @@ export default function HomePage() {
 											key={article}
 											type="button"
 											onClick={() => handleArticleClick(article)}
-											className="w-full px-3 py-2 text-xs bg-muted hover:bg-muted/80 rounded text-muted-foreground hover:text-foreground transition-colors text-left"
+											className="w-full rounded bg-muted px-3 py-2 text-left text-muted-foreground text-xs transition-colors hover:bg-muted/80 hover:text-foreground"
 										>
 											{article}
 										</button>
@@ -263,20 +263,20 @@ export default function HomePage() {
 						</div>
 
 						{/* Center Content */}
-						<div className="lg:col-span-6 text-center space-y-8">
+						<div className="space-y-8 text-center lg:col-span-6">
 							{/* Hero Section */}
 							<div className="space-y-4">
-								<h1 className="text-4xl font-bold text-foreground">
+								<h1 className="font-bold text-4xl text-foreground">
 									rabbithole
 								</h1>
-								<p className="text-lg text-muted-foreground max-w-md mx-auto">
+								<p className="mx-auto max-w-md text-lg text-muted-foreground">
 									Explore the interconnected world of knowledge through
 									interactive graphs
 								</p>
 							</div>
 
 							{/* Search Form */}
-							<div className="max-w-md mx-auto">
+							<div className="mx-auto max-w-md">
 								<form onSubmit={handleSubmit} className="space-y-4">
 									<div className="flex gap-2">
 										<Input
@@ -287,17 +287,17 @@ export default function HomePage() {
 												setSearchQuery(e.target.value);
 												setValidationError(null);
 											}}
-											className="flex-1 text-center h-12 text-base border-border focus:border-primary focus:ring-primary"
+											className="h-12 flex-1 border-border text-center text-base focus:border-primary focus:ring-primary"
 										/>
 										<Button
 											type="submit"
-											className="bg-primary hover:bg-primary/90 text-primary-foreground h-12 px-6"
+											className="h-12 bg-primary px-6 text-primary-foreground hover:bg-primary/90"
 										>
 											Start Exploring
 										</Button>
 									</div>
 									{validationError && (
-										<p className="text-sm text-destructive text-center">
+										<p className="text-center text-destructive text-sm">
 											{validationError}
 										</p>
 									)}
@@ -305,18 +305,18 @@ export default function HomePage() {
 							</div>
 
 							{/* Navigation Guide */}
-							<div className="bg-muted/30 border border-border rounded-lg p-6 max-w-lg mx-auto">
-								<div className="flex items-center gap-2 mb-4 justify-center">
-									<Mouse className="w-4 h-4 text-primary" />
-									<h4 className="font-semibold text-sm text-foreground">
+							<div className="mx-auto max-w-lg rounded-lg border border-border bg-muted/30 p-6">
+								<div className="mb-4 flex items-center justify-center gap-2">
+									<Mouse className="h-4 w-4 text-primary" />
+									<h4 className="font-semibold text-foreground text-sm">
 										Navigation Guide
 									</h4>
 								</div>
 								<div className="space-y-3 text-sm">
 									<div className="flex items-center gap-3">
-										<div className="flex items-center gap-1 min-w-0">
-											<MousePointer className="w-3 h-3 text-muted-foreground" />
-											<span className="font-mono text-xs bg-background px-2 py-1 rounded border">
+										<div className="flex min-w-0 items-center gap-1">
+											<MousePointer className="h-3 w-3 text-muted-foreground" />
+											<span className="rounded border bg-background px-2 py-1 font-mono text-xs">
 												Left Click
 											</span>
 										</div>
@@ -325,9 +325,9 @@ export default function HomePage() {
 										</span>
 									</div>
 									<div className="flex items-center gap-3">
-										<div className="flex items-center gap-1 min-w-0">
-											<MousePointer2 className="w-3 h-3 text-muted-foreground" />
-											<span className="font-mono text-xs bg-background px-2 py-1 rounded border">
+										<div className="flex min-w-0 items-center gap-1">
+											<MousePointer2 className="h-3 w-3 text-muted-foreground" />
+											<span className="rounded border bg-background px-2 py-1 font-mono text-xs">
 												Middle Click
 											</span>
 										</div>
@@ -340,13 +340,13 @@ export default function HomePage() {
 						</div>
 
 						{/* Right Sidebar */}
-						<div className="lg:col-span-3 space-y-6">
+						<div className="space-y-6 lg:col-span-3">
 							{/* Community Picks */}
 							{popularArticles && popularArticles.length > 0 && (
-								<div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-									<div className="flex items-center gap-2 mb-3">
-										<Users className="w-4 h-4 text-green-500" />
-										<h3 className="font-semibold text-sm text-foreground">
+								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+									<div className="mb-3 flex items-center gap-2">
+										<Users className="h-4 w-4 text-green-500" />
+										<h3 className="font-semibold text-foreground text-sm">
 											Community Picks
 										</h3>
 									</div>
@@ -356,12 +356,12 @@ export default function HomePage() {
 												key={article.id}
 												type="button"
 												onClick={() => handleArticleClick(article.articleTitle)}
-												className="w-full p-3 bg-green-50 hover:bg-green-100 border border-green-200 rounded text-green-900 transition-colors text-left"
+												className="w-full rounded border border-green-200 bg-green-50 p-3 text-left text-green-900 transition-colors hover:bg-green-100"
 											>
-												<div className="font-medium text-xs truncate">
+												<div className="truncate font-medium text-xs">
 													{article.articleTitle}
 												</div>
-												<div className="text-xs text-green-700 mt-1">
+												<div className="mt-1 text-green-700 text-xs">
 													{article.totalAppearances} rabbit holes
 												</div>
 											</button>
@@ -372,10 +372,10 @@ export default function HomePage() {
 
 							{/* Platform Stats */}
 							{!isLoading && stats && (
-								<div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-									<div className="flex items-center gap-2 mb-3">
-										<BarChart3 className="w-4 h-4 text-purple-500" />
-										<h3 className="font-semibold text-sm text-foreground">
+								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+									<div className="mb-3 flex items-center gap-2">
+										<BarChart3 className="h-4 w-4 text-purple-500" />
+										<h3 className="font-semibold text-foreground text-sm">
 											Platform Stats
 										</h3>
 									</div>

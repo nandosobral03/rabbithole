@@ -91,9 +91,9 @@ export default function SharedRabbitholeePage() {
 
 	if (isLoading) {
 		return (
-			<div className="h-screen flex items-center justify-center bg-background">
+			<div className="flex h-screen items-center justify-center bg-background">
 				<div className="text-center">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+					<div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-primary border-b-2" />
 					<p className="text-muted-foreground">Loading rabbit hole...</p>
 				</div>
 			</div>
@@ -102,13 +102,13 @@ export default function SharedRabbitholeePage() {
 
 	if (error || !rabbithole) {
 		return (
-			<div className="h-screen flex items-center justify-center bg-background">
-				<div className="text-center max-w-md">
-					<AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-					<h1 className="text-xl font-semibold text-foreground mb-2">
+			<div className="flex h-screen items-center justify-center bg-background">
+				<div className="max-w-md text-center">
+					<AlertCircle className="mx-auto mb-4 h-12 w-12 text-destructive" />
+					<h1 className="mb-2 font-semibold text-foreground text-xl">
 						Rabbit Hole Not Found
 					</h1>
-					<p className="text-muted-foreground mb-4">
+					<p className="mb-4 text-muted-foreground">
 						This rabbit hole may have expired or doesn't exist.
 					</p>
 					<Link href="/">
@@ -120,19 +120,19 @@ export default function SharedRabbitholeePage() {
 	}
 
 	return (
-		<div className="h-screen flex flex-col bg-background">
+		<div className="flex h-screen flex-col bg-background">
 			{/* Header with rabbit hole info and actions */}
-			<div className="bg-card border-b border-border px-4 py-3 flex items-center justify-between">
-				<div className="flex-1 min-w-0">
-					<h1 className="text-lg font-semibold text-card-foreground truncate">
+			<div className="flex items-center justify-between border-border border-b bg-card px-4 py-3">
+				<div className="min-w-0 flex-1">
+					<h1 className="truncate font-semibold text-card-foreground text-lg">
 						{rabbithole.title}
 					</h1>
 					{rabbithole.description && (
-						<p className="text-sm text-muted-foreground truncate">
+						<p className="truncate text-muted-foreground text-sm">
 							{rabbithole.description}
 						</p>
 					)}
-					<div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+					<div className="mt-1 flex items-center gap-4 text-muted-foreground text-xs">
 						<span>{rabbithole.viewCount} views</span>
 						<span>
 							Created {new Date(rabbithole.createdAt).toLocaleDateString()}

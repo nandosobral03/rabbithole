@@ -1,508 +1,464 @@
 {
-  "version": "6",
-  "dialect": "sqlite",
-  "id": "ed3c5be2-0280-469b-add0-2b543dd95b43",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "tables": {
-    "rabbithole_article_analytics": {
-      "name": "rabbithole_article_analytics",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "article_title": {
-          "name": "article_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "article_url": {
-          "name": "article_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "totalAppearances": {
-          "name": "totalAppearances",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
-        },
-        "totalConnections": {
-          "name": "totalConnections",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "averageConnections": {
-          "name": "averageConnections",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "firstSeenAt": {
-          "name": "firstSeenAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        },
-        "lastSeenAt": {
-          "name": "lastSeenAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        }
-      },
-      "indexes": {
-        "article_title_idx": {
-          "name": "article_title_idx",
-          "columns": [
-            "article_title"
-          ],
-          "isUnique": false
-        },
-        "total_appearances_idx": {
-          "name": "total_appearances_idx",
-          "columns": [
-            "totalAppearances"
-          ],
-          "isUnique": false
-        },
-        "total_connections_idx": {
-          "name": "total_connections_idx",
-          "columns": [
-            "totalConnections"
-          ],
-          "isUnique": false
-        },
-        "average_connections_idx": {
-          "name": "average_connections_idx",
-          "columns": [
-            "averageConnections"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "rabbithole_connection_analytics": {
-      "name": "rabbithole_connection_analytics",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "source_article": {
-          "name": "source_article",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "target_article": {
-          "name": "target_article",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "connectionCount": {
-          "name": "connectionCount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
-        },
-        "firstSeenAt": {
-          "name": "firstSeenAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        },
-        "lastSeenAt": {
-          "name": "lastSeenAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        }
-      },
-      "indexes": {
-        "source_target_idx": {
-          "name": "source_target_idx",
-          "columns": [
-            "source_article",
-            "target_article"
-          ],
-          "isUnique": false
-        },
-        "connection_count_idx": {
-          "name": "connection_count_idx",
-          "columns": [
-            "connectionCount"
-          ],
-          "isUnique": false
-        },
-        "source_article_idx": {
-          "name": "source_article_idx",
-          "columns": [
-            "source_article"
-          ],
-          "isUnique": false
-        },
-        "target_article_idx": {
-          "name": "target_article_idx",
-          "columns": [
-            "target_article"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "rabbithole_node_analytics": {
-      "name": "rabbithole_node_analytics",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "rabbithole_id": {
-          "name": "rabbithole_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "article_title": {
-          "name": "article_title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "incomingConnections": {
-          "name": "incomingConnections",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "outgoingConnections": {
-          "name": "outgoingConnections",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "nodeSize": {
-          "name": "nodeSize",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "contentLength": {
-          "name": "contentLength",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "isRootNode": {
-          "name": "isRootNode",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        }
-      },
-      "indexes": {
-        "rabbithole_node_idx": {
-          "name": "rabbithole_node_idx",
-          "columns": [
-            "rabbithole_id",
-            "article_title"
-          ],
-          "isUnique": false
-        },
-        "incoming_connections_idx": {
-          "name": "incoming_connections_idx",
-          "columns": [
-            "incomingConnections"
-          ],
-          "isUnique": false
-        },
-        "outgoing_connections_idx": {
-          "name": "outgoing_connections_idx",
-          "columns": [
-            "outgoingConnections"
-          ],
-          "isUnique": false
-        },
-        "node_size_idx": {
-          "name": "node_size_idx",
-          "columns": [
-            "nodeSize"
-          ],
-          "isUnique": false
-        },
-        "content_length_idx": {
-          "name": "content_length_idx",
-          "columns": [
-            "contentLength"
-          ],
-          "isUnique": false
-        },
-        "is_root_node_idx": {
-          "name": "is_root_node_idx",
-          "columns": [
-            "isRootNode"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "rabbithole_node_analytics_rabbithole_id_rabbithole_shared_rabbithole_id_fk": {
-          "name": "rabbithole_node_analytics_rabbithole_id_rabbithole_shared_rabbithole_id_fk",
-          "tableFrom": "rabbithole_node_analytics",
-          "tableTo": "rabbithole_shared_rabbithole",
-          "columnsFrom": [
-            "rabbithole_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "rabbithole_post": {
-      "name": "rabbithole_post",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text(256)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "name_idx": {
-          "name": "name_idx",
-          "columns": [
-            "name"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "rabbithole_shared_rabbithole": {
-      "name": "rabbithole_shared_rabbithole",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "graph_data": {
-          "name": "graph_data",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        },
-        "updatedAt": {
-          "name": "updatedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastAccessedAt": {
-          "name": "lastAccessedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
-        },
-        "expiresAt": {
-          "name": "expiresAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "viewCount": {
-          "name": "viewCount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "nodeCount": {
-          "name": "nodeCount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "linkCount": {
-          "name": "linkCount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        }
-      },
-      "indexes": {
-        "expires_at_idx": {
-          "name": "expires_at_idx",
-          "columns": [
-            "expiresAt"
-          ],
-          "isUnique": false
-        },
-        "last_accessed_idx": {
-          "name": "last_accessed_idx",
-          "columns": [
-            "lastAccessedAt"
-          ],
-          "isUnique": false
-        },
-        "node_count_idx": {
-          "name": "node_count_idx",
-          "columns": [
-            "nodeCount"
-          ],
-          "isUnique": false
-        },
-        "link_count_idx": {
-          "name": "link_count_idx",
-          "columns": [
-            "linkCount"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    }
-  },
-  "views": {},
-  "enums": {},
-  "_meta": {
-    "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "internal": {
-    "indexes": {}
-  }
+	"version": "6",
+	"dialect": "sqlite",
+	"id": "ed3c5be2-0280-469b-add0-2b543dd95b43",
+	"prevId": "00000000-0000-0000-0000-000000000000",
+	"tables": {
+		"rabbithole_article_analytics": {
+			"name": "rabbithole_article_analytics",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"article_title": {
+					"name": "article_title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"article_url": {
+					"name": "article_url",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"totalAppearances": {
+					"name": "totalAppearances",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 1
+				},
+				"totalConnections": {
+					"name": "totalConnections",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"averageConnections": {
+					"name": "averageConnections",
+					"type": "real",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"firstSeenAt": {
+					"name": "firstSeenAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				},
+				"lastSeenAt": {
+					"name": "lastSeenAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				}
+			},
+			"indexes": {
+				"article_title_idx": {
+					"name": "article_title_idx",
+					"columns": ["article_title"],
+					"isUnique": false
+				},
+				"total_appearances_idx": {
+					"name": "total_appearances_idx",
+					"columns": ["totalAppearances"],
+					"isUnique": false
+				},
+				"total_connections_idx": {
+					"name": "total_connections_idx",
+					"columns": ["totalConnections"],
+					"isUnique": false
+				},
+				"average_connections_idx": {
+					"name": "average_connections_idx",
+					"columns": ["averageConnections"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"rabbithole_connection_analytics": {
+			"name": "rabbithole_connection_analytics",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"source_article": {
+					"name": "source_article",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"target_article": {
+					"name": "target_article",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"connectionCount": {
+					"name": "connectionCount",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 1
+				},
+				"firstSeenAt": {
+					"name": "firstSeenAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				},
+				"lastSeenAt": {
+					"name": "lastSeenAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				}
+			},
+			"indexes": {
+				"source_target_idx": {
+					"name": "source_target_idx",
+					"columns": ["source_article", "target_article"],
+					"isUnique": false
+				},
+				"connection_count_idx": {
+					"name": "connection_count_idx",
+					"columns": ["connectionCount"],
+					"isUnique": false
+				},
+				"source_article_idx": {
+					"name": "source_article_idx",
+					"columns": ["source_article"],
+					"isUnique": false
+				},
+				"target_article_idx": {
+					"name": "target_article_idx",
+					"columns": ["target_article"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"rabbithole_node_analytics": {
+			"name": "rabbithole_node_analytics",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"rabbithole_id": {
+					"name": "rabbithole_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"article_title": {
+					"name": "article_title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"incomingConnections": {
+					"name": "incomingConnections",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"outgoingConnections": {
+					"name": "outgoingConnections",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"nodeSize": {
+					"name": "nodeSize",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"contentLength": {
+					"name": "contentLength",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"isRootNode": {
+					"name": "isRootNode",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": false
+				},
+				"createdAt": {
+					"name": "createdAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				}
+			},
+			"indexes": {
+				"rabbithole_node_idx": {
+					"name": "rabbithole_node_idx",
+					"columns": ["rabbithole_id", "article_title"],
+					"isUnique": false
+				},
+				"incoming_connections_idx": {
+					"name": "incoming_connections_idx",
+					"columns": ["incomingConnections"],
+					"isUnique": false
+				},
+				"outgoing_connections_idx": {
+					"name": "outgoing_connections_idx",
+					"columns": ["outgoingConnections"],
+					"isUnique": false
+				},
+				"node_size_idx": {
+					"name": "node_size_idx",
+					"columns": ["nodeSize"],
+					"isUnique": false
+				},
+				"content_length_idx": {
+					"name": "content_length_idx",
+					"columns": ["contentLength"],
+					"isUnique": false
+				},
+				"is_root_node_idx": {
+					"name": "is_root_node_idx",
+					"columns": ["isRootNode"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {
+				"rabbithole_node_analytics_rabbithole_id_rabbithole_shared_rabbithole_id_fk": {
+					"name": "rabbithole_node_analytics_rabbithole_id_rabbithole_shared_rabbithole_id_fk",
+					"tableFrom": "rabbithole_node_analytics",
+					"tableTo": "rabbithole_shared_rabbithole",
+					"columnsFrom": ["rabbithole_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"rabbithole_post": {
+			"name": "rabbithole_post",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "integer",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text(256)",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"createdAt": {
+					"name": "createdAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				},
+				"updatedAt": {
+					"name": "updatedAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				}
+			},
+			"indexes": {
+				"name_idx": {
+					"name": "name_idx",
+					"columns": ["name"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		},
+		"rabbithole_shared_rabbithole": {
+			"name": "rabbithole_shared_rabbithole",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"title": {
+					"name": "title",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"description": {
+					"name": "description",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"graph_data": {
+					"name": "graph_data",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"createdAt": {
+					"name": "createdAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				},
+				"updatedAt": {
+					"name": "updatedAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": false,
+					"autoincrement": false
+				},
+				"lastAccessedAt": {
+					"name": "lastAccessedAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": "(unixepoch())"
+				},
+				"expiresAt": {
+					"name": "expiresAt",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false
+				},
+				"viewCount": {
+					"name": "viewCount",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"nodeCount": {
+					"name": "nodeCount",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				},
+				"linkCount": {
+					"name": "linkCount",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"autoincrement": false,
+					"default": 0
+				}
+			},
+			"indexes": {
+				"expires_at_idx": {
+					"name": "expires_at_idx",
+					"columns": ["expiresAt"],
+					"isUnique": false
+				},
+				"last_accessed_idx": {
+					"name": "last_accessed_idx",
+					"columns": ["lastAccessedAt"],
+					"isUnique": false
+				},
+				"node_count_idx": {
+					"name": "node_count_idx",
+					"columns": ["nodeCount"],
+					"isUnique": false
+				},
+				"link_count_idx": {
+					"name": "link_count_idx",
+					"columns": ["linkCount"],
+					"isUnique": false
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"checkConstraints": {}
+		}
+	},
+	"views": {},
+	"enums": {},
+	"_meta": {
+		"schemas": {},
+		"tables": {},
+		"columns": {}
+	},
+	"internal": {
+		"indexes": {}
+	}
 }

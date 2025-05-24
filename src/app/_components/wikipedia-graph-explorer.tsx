@@ -357,7 +357,6 @@ export function WikipediaGraphExplorer({
 		[selectedNode, graphData.nodes, graphData.links, fetchPage],
 	);
 
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	const handleArticleMiddleClick = useCallback(
 		async (title: string) => {
 			if (!selectedNode) return;
@@ -619,8 +618,8 @@ export function WikipediaGraphExplorer({
 			<style>{wikipediaStyles}</style>
 
 			{graphData.nodes.length > 0 && (
-				<div className="absolute top-4 left-4 z-10 bg-card rounded-lg shadow-lg border border-border px-3 py-2 flex items-center gap-3">
-					<div className="text-xs text-muted-foreground font-medium">
+				<div className="absolute top-4 left-4 z-10 flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
+					<div className="font-medium text-muted-foreground text-xs">
 						{graphData.nodes.length} nodes • {graphData.links.length} links
 					</div>
 					<Button
@@ -628,7 +627,7 @@ export function WikipediaGraphExplorer({
 						size="sm"
 						onClick={handleShare}
 						disabled={isSharing}
-						className="h-6 px-2 text-xs flex items-center gap-1"
+						className="flex h-6 items-center gap-1 px-2 text-xs"
 					>
 						<Share2 className="h-3 w-3" />
 						{isSharing ? "Sharing..." : "Share"}
@@ -637,7 +636,7 @@ export function WikipediaGraphExplorer({
 						variant="outline"
 						size="sm"
 						onClick={handleRestart}
-						className="h-6 px-2 text-xs flex items-center gap-1"
+						className="flex h-6 items-center gap-1 px-2 text-xs"
 					>
 						<RotateCcw className="h-3 w-3" />
 						Restart
@@ -647,8 +646,8 @@ export function WikipediaGraphExplorer({
 
 			{/* Share Success Notification */}
 			{showShareSuccess && (
-				<div className="absolute top-16 left-4 z-20 bg-accent border border-accent rounded-lg px-3 py-2 shadow-lg">
-					<div className="text-xs text-accent-foreground font-medium">
+				<div className="absolute top-16 left-4 z-20 rounded-lg border border-accent bg-accent px-3 py-2 shadow-lg">
+					<div className="font-medium text-accent-foreground text-xs">
 						✅ Rabbit hole shared! Link copied to clipboard
 					</div>
 				</div>

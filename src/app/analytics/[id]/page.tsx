@@ -25,9 +25,9 @@ export default function RabbitholeAnalyticsPage() {
 
 	if (isLoading) {
 		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-gray-50">
 				<div className="text-center">
-					<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+					<div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-blue-600 border-b-2" />
 					<p className="text-gray-600">Loading analytics...</p>
 				</div>
 			</div>
@@ -36,13 +36,13 @@ export default function RabbitholeAnalyticsPage() {
 
 	if (error || !analytics) {
 		return (
-			<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-				<div className="text-center max-w-md">
-					<BarChart3 className="h-12 w-12 text-red-500 mx-auto mb-4" />
-					<h1 className="text-xl font-semibold text-gray-900 mb-2">
+			<div className="flex min-h-screen items-center justify-center bg-gray-50">
+				<div className="max-w-md text-center">
+					<BarChart3 className="mx-auto mb-4 h-12 w-12 text-red-500" />
+					<h1 className="mb-2 font-semibold text-gray-900 text-xl">
 						Analytics Not Available
 					</h1>
-					<p className="text-gray-600 mb-4">
+					<p className="mb-4 text-gray-600">
 						Unable to load analytics for this rabbit hole.
 					</p>
 					<Button onClick={() => router.back()} variant="outline">
@@ -79,8 +79,8 @@ export default function RabbitholeAnalyticsPage() {
 	return (
 		<div className="min-h-screen bg-gray-50">
 			{/* Header */}
-			<div className="bg-white border-b border-gray-200">
-				<div className="max-w-7xl mx-auto px-4 py-6">
+			<div className="border-gray-200 border-b bg-white">
+				<div className="mx-auto max-w-7xl px-4 py-6">
 					<div className="flex items-center justify-between">
 						<div className="flex items-center gap-4">
 							<Button
@@ -93,11 +93,11 @@ export default function RabbitholeAnalyticsPage() {
 								Back
 							</Button>
 							<div>
-								<h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+								<h1 className="flex items-center gap-2 font-bold text-2xl text-gray-900">
 									<BarChart3 className="h-6 w-6 text-blue-600" />
 									Rabbit Hole Analytics
 								</h1>
-								<p className="text-gray-600 mt-1">
+								<p className="mt-1 text-gray-600">
 									Detailed analysis of "{rabbithole.title}"
 								</p>
 							</div>
@@ -118,9 +118,9 @@ export default function RabbitholeAnalyticsPage() {
 				</div>
 			</div>
 
-			<div className="max-w-7xl mx-auto px-4 py-8">
+			<div className="mx-auto max-w-7xl px-4 py-8">
 				{/* Overview Stats */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+				<div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
 					<StatCard
 						icon={<Globe className="h-6 w-6" />}
 						title="Total Nodes"
@@ -152,66 +152,66 @@ export default function RabbitholeAnalyticsPage() {
 				</div>
 
 				{/* Connection Statistics */}
-				<div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
-					<h3 className="text-lg font-semibold text-gray-900 mb-4">
+				<div className="mb-8 rounded-lg border border-gray-200 bg-white p-6">
+					<h3 className="mb-4 font-semibold text-gray-900 text-lg">
 						Connection Statistics
 					</h3>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div className="grid grid-cols-1 gap-6 md:grid-cols-3">
 						<div>
-							<h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+							<h4 className="font-medium text-gray-500 text-sm uppercase tracking-wide">
 								Incoming Connections
 							</h4>
 							<div className="mt-2 space-y-1">
 								<div className="flex justify-between">
-									<span className="text-sm text-gray-600">Total:</span>
-									<span className="text-sm font-medium">
+									<span className="text-gray-600 text-sm">Total:</span>
+									<span className="font-medium text-sm">
 										{totalIncomingConnections}
 									</span>
 								</div>
 								<div className="flex justify-between">
-									<span className="text-sm text-gray-600">Average:</span>
-									<span className="text-sm font-medium">
+									<span className="text-gray-600 text-sm">Average:</span>
+									<span className="font-medium text-sm">
 										{avgIncomingConnections.toFixed(1)}
 									</span>
 								</div>
 							</div>
 						</div>
 						<div>
-							<h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+							<h4 className="font-medium text-gray-500 text-sm uppercase tracking-wide">
 								Outgoing Connections
 							</h4>
 							<div className="mt-2 space-y-1">
 								<div className="flex justify-between">
-									<span className="text-sm text-gray-600">Total:</span>
-									<span className="text-sm font-medium">
+									<span className="text-gray-600 text-sm">Total:</span>
+									<span className="font-medium text-sm">
 										{totalOutgoingConnections}
 									</span>
 								</div>
 								<div className="flex justify-between">
-									<span className="text-sm text-gray-600">Average:</span>
-									<span className="text-sm font-medium">
+									<span className="text-gray-600 text-sm">Average:</span>
+									<span className="font-medium text-sm">
 										{avgOutgoingConnections.toFixed(1)}
 									</span>
 								</div>
 							</div>
 						</div>
 						<div>
-							<h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+							<h4 className="font-medium text-gray-500 text-sm uppercase tracking-wide">
 								Most Connected
 							</h4>
 							<div className="mt-2 space-y-1">
 								<div className="flex justify-between">
-									<span className="text-sm text-gray-600">Article:</span>
+									<span className="text-gray-600 text-sm">Article:</span>
 									<span
-										className="text-sm font-medium truncate max-w-32"
+										className="max-w-32 truncate font-medium text-sm"
 										title={mostConnectedNode?.articleTitle}
 									>
 										{mostConnectedNode?.articleTitle}
 									</span>
 								</div>
 								<div className="flex justify-between">
-									<span className="text-sm text-gray-600">Connections:</span>
-									<span className="text-sm font-medium">
+									<span className="text-gray-600 text-sm">Connections:</span>
+									<span className="font-medium text-sm">
 										{(mostConnectedNode?.incomingConnections ?? 0) +
 											(mostConnectedNode?.outgoingConnections ?? 0)}
 									</span>
@@ -222,12 +222,12 @@ export default function RabbitholeAnalyticsPage() {
 				</div>
 
 				{/* Node Details */}
-				<div className="bg-white rounded-lg border border-gray-200 p-6">
-					<div className="flex items-center justify-between mb-4">
-						<h3 className="text-lg font-semibold text-gray-900">
+				<div className="rounded-lg border border-gray-200 bg-white p-6">
+					<div className="mb-4 flex items-center justify-between">
+						<h3 className="font-semibold text-gray-900 text-lg">
 							Node Details
 						</h3>
-						<p className="text-sm text-gray-600">
+						<p className="text-gray-600 text-sm">
 							Sorted by incoming connections
 						</p>
 					</div>
@@ -235,22 +235,22 @@ export default function RabbitholeAnalyticsPage() {
 						{nodeStats.map((node, index) => (
 							<div
 								key={node.id}
-								className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+								className="flex items-center justify-between rounded-lg bg-gray-50 p-4"
 							>
 								<div className="flex items-center gap-4">
-									<div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-sm font-medium">
+									<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 font-medium text-blue-600 text-sm">
 										{index + 1}
 									</div>
-									<div className="flex-1 min-w-0">
-										<h4 className="font-medium text-gray-900 truncate">
+									<div className="min-w-0 flex-1">
+										<h4 className="truncate font-medium text-gray-900">
 											{node.articleTitle}
 											{node.isRootNode && (
-												<span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+												<span className="ml-2 inline-flex items-center rounded bg-green-100 px-2 py-0.5 font-medium text-green-800 text-xs">
 													Root
 												</span>
 											)}
 										</h4>
-										<div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+										<div className="mt-1 flex items-center gap-4 text-gray-500 text-sm">
 											<span>↓ {node.incomingConnections} incoming</span>
 											<span>↑ {node.outgoingConnections} outgoing</span>
 											<span>{node.contentLength.toLocaleString()} chars</span>
@@ -260,11 +260,11 @@ export default function RabbitholeAnalyticsPage() {
 								</div>
 								<div className="flex items-center gap-2">
 									<div className="text-right">
-										<div className="text-sm font-medium text-gray-900">
+										<div className="font-medium text-gray-900 text-sm">
 											{node.incomingConnections + node.outgoingConnections}{" "}
 											total
 										</div>
-										<div className="text-xs text-gray-500">connections</div>
+										<div className="text-gray-500 text-xs">connections</div>
 									</div>
 								</div>
 							</div>
@@ -293,15 +293,15 @@ function StatCard({ icon, title, value, subtitle, color }: StatCardProps) {
 	};
 
 	return (
-		<div className="bg-white rounded-lg border border-gray-200 p-6">
+		<div className="rounded-lg border border-gray-200 bg-white p-6">
 			<div className="flex items-center">
-				<div className={`p-2 rounded-lg ${colorClasses[color]}`}>{icon}</div>
+				<div className={`rounded-lg p-2 ${colorClasses[color]}`}>{icon}</div>
 				<div className="ml-4">
-					<h3 className="text-sm font-medium text-gray-500">{title}</h3>
-					<p className="text-2xl font-semibold text-gray-900">
+					<h3 className="font-medium text-gray-500 text-sm">{title}</h3>
+					<p className="font-semibold text-2xl text-gray-900">
 						{value.toLocaleString()}
 					</p>
-					<p className="text-sm text-gray-600">{subtitle}</p>
+					<p className="text-gray-600 text-sm">{subtitle}</p>
 				</div>
 			</div>
 		</div>

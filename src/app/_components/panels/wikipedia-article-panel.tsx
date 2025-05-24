@@ -119,16 +119,18 @@ export function WikipediaArticlePanel({
 							)}
 
 							{/* Remove Button */}
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => onRemoveNode(selectedNode)}
-								className="flex items-center gap-2 text-destructive hover:border-destructive/30 hover:text-destructive"
-								title="Remove this article and its orphaned connections"
-							>
-								<Trash2 className="h-4 w-4" />
-								Remove
-							</Button>
+							{graphData.nodes.length > 1 && (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => onRemoveNode(selectedNode)}
+									className="flex items-center gap-2 text-destructive hover:border-destructive/30 hover:text-destructive"
+									title="Remove this article and its orphaned connections"
+								>
+									<Trash2 className="h-4 w-4" />
+									Remove
+								</Button>
+							)}
 
 							{/* Close Button */}
 							<Button
