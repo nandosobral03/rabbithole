@@ -12,14 +12,12 @@ const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
 interface WikipediaGraphCanvasProps {
 	graphData: GraphData;
 	onNodeClick: (node: GraphNode) => void;
-	onNodeRightClick: (node: GraphNode) => void;
 	onBackgroundClick: () => void;
 }
 
 export function WikipediaGraphCanvas({
 	graphData,
 	onNodeClick,
-	onNodeRightClick,
 	onBackgroundClick,
 }: WikipediaGraphCanvasProps) {
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -66,8 +64,6 @@ export function WikipediaGraphCanvas({
 				linkDirectionalParticleSpeed={0.006}
 				// @ts-expect-error - Works still I swear
 				onNodeClick={onNodeClick}
-				// @ts-expect-error - Works still I swear
-				onNodeRightClick={onNodeRightClick}
 				onBackgroundClick={onBackgroundClick}
 				width={typeof window !== "undefined" ? window.innerWidth : 800}
 				height={typeof window !== "undefined" ? window.innerHeight : 600}

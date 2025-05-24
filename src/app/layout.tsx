@@ -21,6 +21,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html lang="en" className={`${geist.variable}`}>
+			<head>
+				<link
+					href="https://api.fontshare.com/v2/css?f[]=chillax@200,300,400,500,600,700,1&display=swap"
+					rel="stylesheet"
+				/>
+			</head>
 			<body>
 				<TRPCReactProvider>{children}</TRPCReactProvider>
 			</body>

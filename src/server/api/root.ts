@@ -1,4 +1,5 @@
 import { postRouter } from "~/server/api/routers/post";
+import { rabbitholeRouter } from "~/server/api/routers/rabbithole";
 import { wikipediaRouter } from "~/server/api/routers/wikipedia";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -10,6 +11,7 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 export const appRouter = createTRPCRouter({
 	post: postRouter,
 	wikipedia: wikipediaRouter,
+	rabbithole: rabbitholeRouter,
 });
 
 // export type definition of API

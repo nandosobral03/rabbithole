@@ -1,7 +1,7 @@
 "use client";
 
 import DOMPurify from "dompurify";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface WikipediaArticleViewerProps {
 	htmlContent: string;
@@ -10,6 +10,32 @@ interface WikipediaArticleViewerProps {
 	onMiddleClick?: (title: string) => void;
 	loadingLinks?: Set<string>;
 }
+
+// Memoize the article title extraction logic
+const extractArticleTitle = (href: string): string => {
+	if (href.startsWith("./")) {
+		return decodeURIComponent(href.replace("./", "")).replace(/_/g, " ");
+	}
+	if (href.startsWith("/wiki/")) {
+		return decodeURIComponent(href.replace("/wiki/", "")).replace(/_/g, " ");
+	}
+	if (href.includes("wikipedia.org/wiki/")) {
+		const match = href.match(/\/wiki\/([^#?]+)/);
+		if (match?.[1]) {
+			return decodeURIComponent(match[1]).replace(/_/g, " ");
+		}
+	}
+	return "";
+};
+
+// Check if a link is a Wikipedia link
+const isWikipediaLink = (href: string): boolean => {
+	return (
+		href.startsWith("./") ||
+		href.startsWith("/wiki/") ||
+		href.includes("wikipedia.org/wiki/")
+	);
+};
 
 export function WikipediaArticleViewer({
 	htmlContent,
@@ -20,11 +46,9 @@ export function WikipediaArticleViewer({
 }: WikipediaArticleViewerProps) {
 	const [sanitizedHtml, setSanitizedHtml] = useState("");
 
-	useEffect(() => {
-		if (typeof window === "undefined") return;
-
-		// Configure DOMPurify to allow most Wikipedia elements but remove dangerous ones
-		const cleanHtml = DOMPurify.sanitize(htmlContent, {
+	// Memoize the DOMPurify configuration
+	const purifyConfig = useMemo(
+		() => ({
 			ALLOWED_TAGS: [
 				"div",
 				"p",
@@ -96,303 +120,246 @@ export function WikipediaArticleViewer({
 			FORBID_ATTR: ["onclick", "onerror", "onload", "onmouseover"],
 			KEEP_CONTENT: true,
 			ALLOW_DATA_ATTR: true,
-		});
+		}),
+		[],
+	);
 
-		setSanitizedHtml(cleanHtml);
+	// Memoize the sanitized HTML to avoid re-sanitizing on every render
+	const memoizedSanitizedHtml = useMemo(() => {
+		if (typeof window === "undefined" || !htmlContent) return "";
+		return DOMPurify.sanitize(htmlContent, purifyConfig);
+	}, [htmlContent, purifyConfig]);
 
-		// Debug: Check what links exist in the sanitized HTML
-		console.log("Wikipedia content sanitized, checking for links...");
-		const tempDiv = document.createElement("div");
-		tempDiv.innerHTML = cleanHtml;
-		const links = tempDiv.querySelectorAll("a[href]");
-		console.log(`Found ${links.length} links in content:`);
+	useEffect(() => {
+		setSanitizedHtml(memoizedSanitizedHtml);
+	}, [memoizedSanitizedHtml]);
 
-		let wikipediaLinkCount = 0;
-		let externalLinkCount = 0;
+	// Memoize the container ID to avoid recalculating
+	const containerId = useMemo(
+		() => `wikipedia-content-${title.replace(/\s+/g, "-")}`,
+		[title],
+	);
 
-		links.forEach((link, index) => {
-			const href = link.getAttribute("href");
-			const isWikipediaLink =
-				href?.startsWith("./") ||
-				href?.startsWith("/wiki/") ||
-				href?.includes("wikipedia.org/wiki/");
+	// Optimized click handler
+	const handleLinkClick = useCallback(
+		(e: Event) => {
+			const target = e.target as HTMLElement;
+			const mouseEvent = e as MouseEvent;
+			const anchor = target.closest("a");
 
-			if (isWikipediaLink) {
-				wikipediaLinkCount++;
-			} else {
-				externalLinkCount++;
+			if (!anchor) return;
+
+			const href = anchor.getAttribute("href");
+			if (!href || !isWikipediaLink(href)) {
+				// External link - ensure it opens in new tab
+				anchor.setAttribute("target", "_blank");
+				anchor.setAttribute("rel", "noopener noreferrer");
+				return;
 			}
 
-			if (index < 10) {
-				// Log first 10 links with their type
-				console.log(
-					`Link ${index}: ${href} (${isWikipediaLink ? "Wikipedia" : "External"})`,
-				);
+			// Wikipedia link - prevent default and handle custom logic
+			e.preventDefault();
+			e.stopPropagation();
+
+			const articleTitle = extractArticleTitle(href);
+			if (!articleTitle?.trim()) return;
+
+			// Handle middle click vs regular click
+			if (mouseEvent.button === 1 && onMiddleClick) {
+				onMiddleClick(articleTitle);
+			} else if (onLinkClick) {
+				onLinkClick(articleTitle);
 			}
-		});
+		},
+		[onLinkClick, onMiddleClick],
+	);
 
-		console.log(
-			`Wikipedia links: ${wikipediaLinkCount}, External links: ${externalLinkCount}`,
-		);
-	}, [htmlContent]);
+	// Handle middle clicks
+	const handleAuxClick = useCallback(
+		(e: Event) => {
+			const mouseEvent = e as MouseEvent;
+			if (mouseEvent.button === 1) {
+				handleLinkClick(e);
+			}
+		},
+		[handleLinkClick],
+	);
 
+	// Prevent default middle-click behavior
+	const handleMouseDown = useCallback((e: Event) => {
+		const mouseEvent = e as MouseEvent;
+		const target = e.target as HTMLElement;
+		const anchor = target.closest("a");
+
+		if (anchor && mouseEvent.button === 1) {
+			const href = anchor.getAttribute("href");
+			if (href && isWikipediaLink(href)) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		}
+	}, []);
+
+	// Set up event listeners
 	useEffect(() => {
 		if (!sanitizedHtml || !onLinkClick) return;
 
-		const container = document.getElementById(
-			`wikipedia-content-${title.replace(/\s+/g, "-")}`,
-		);
-		if (!container) {
-			console.log(
-				"Container not found for:",
-				`wikipedia-content-${title.replace(/\s+/g, "-")}`,
-			);
-			return;
-		}
+		const container = document.getElementById(containerId);
+		if (!container) return;
 
-		console.log("Setting up click handler for container:", container);
-
-		const handleLinkClick = (e: Event) => {
-			console.log("🔍 Click detected on:", e.target);
-
-			const target = e.target as HTMLElement;
-			const mouseEvent = e as MouseEvent;
-
-			// Handle clicks on anchor tags or their children
-			const anchor = target.closest("a");
-
-			if (anchor) {
-				console.log("🎯 Found anchor tag:", anchor);
-
-				const href = anchor.getAttribute("href");
-				console.log("🔗 Anchor href attribute:", href);
-
-				if (href) {
-					// Check if this is a Wikipedia link
-					const isWikipediaLink =
-						href.startsWith("./") ||
-						href.startsWith("/wiki/") ||
-						href.includes("wikipedia.org/wiki/");
-
-					if (isWikipediaLink) {
-						// Handle Wikipedia links with our custom logic
-						console.log("⛔ Preventing default navigation for Wikipedia link");
-						e.preventDefault();
-						e.stopPropagation();
-
-						// Handle both relative and absolute Wikipedia links
-						let articleTitle = "";
-
-						if (href.startsWith("./")) {
-							// Wikipedia HTML API format: ./Article_name
-							console.log("📝 Processing Wikipedia HTML API relative link");
-							articleTitle = decodeURIComponent(href.replace("./", "")).replace(
-								/_/g,
-								" ",
-							);
-						} else if (href.startsWith("/wiki/")) {
-							// Traditional Wikipedia link format: /wiki/Article_name
-							console.log("📝 Processing traditional Wikipedia link");
-							articleTitle = decodeURIComponent(
-								href.replace("/wiki/", ""),
-							).replace(/_/g, " ");
-						} else if (href.includes("wikipedia.org/wiki/")) {
-							// Absolute Wikipedia link: https://en.wikipedia.org/wiki/Article_name
-							console.log("🌐 Processing absolute Wikipedia link");
-							const match = href.match(/\/wiki\/([^#?]+)/);
-							if (match?.[1]) {
-								articleTitle = decodeURIComponent(match[1]).replace(/_/g, " ");
-							}
-						}
-
-						if (articleTitle?.trim()) {
-							// Check if it's a middle mouse button click (button 1)
-							if (mouseEvent.button === 1) {
-								console.log(
-									"🖱️ Middle click detected - adding node without switching view",
-								);
-								// Call onLinkClick with a special flag or create a separate handler
-								// For now, we'll pass the article title but indicate it's a middle click
-								if (onMiddleClick) {
-									// We need to modify the parent component to handle this
-									// For now, let's just add the node without switching
-									console.log("✅ Adding node via middle click:", articleTitle);
-									onMiddleClick(articleTitle);
-								}
-							} else {
-								console.log(
-									"✅ Calling onLinkClick with article:",
-									articleTitle,
-								);
-								onLinkClick(articleTitle);
-							}
-						} else {
-							console.log("❌ No valid article title extracted from:", href);
-						}
-					} else {
-						// External link - let it open in new tab (don't prevent default)
-						console.log(
-							"🌐 External link detected, allowing default behavior:",
-							href,
-						);
-						// Ensure it opens in new tab
-						anchor.setAttribute("target", "_blank");
-						anchor.setAttribute("rel", "noopener noreferrer");
-					}
-				} else {
-					console.log("❌ No href attribute found on anchor");
-				}
-			} else {
-				console.log("❌ Click target is not an anchor or child of anchor");
-			}
-		};
-
-		// Handle middle clicks specifically with auxclick event
-		const handleAuxClick = (e: Event) => {
-			const mouseEvent = e as MouseEvent;
-			if (mouseEvent.button === 1) {
-				// Middle mouse button
-				console.log("🖱️ Auxclick (middle button) detected");
-				handleLinkClick(e);
-			}
-		};
-
-		// Prevent default middle-click behavior on mousedown
-		const handleMouseDown = (e: Event) => {
-			const mouseEvent = e as MouseEvent;
-			const target = e.target as HTMLElement;
-			const anchor = target.closest("a");
-
-			if (anchor && mouseEvent.button === 1) {
-				const href = anchor.getAttribute("href");
-				const isWikipediaLink =
-					href?.startsWith("./") ||
-					href?.startsWith("/wiki/") ||
-					href?.includes("wikipedia.org/wiki/");
-
-				if (isWikipediaLink) {
-					console.log("⛔ Preventing default middle-click behavior");
-					e.preventDefault();
-					e.stopPropagation();
-				}
-			}
-		};
-
-		// Use capture phase to ensure we catch the event early
-		console.log("🔧 Attaching click listeners with capture=true");
 		container.addEventListener("click", handleLinkClick, true);
 		container.addEventListener("auxclick", handleAuxClick, true);
 		container.addEventListener("mousedown", handleMouseDown, true);
 
 		return () => {
-			console.log("🧹 Removing click listeners");
 			container.removeEventListener("click", handleLinkClick, true);
 			container.removeEventListener("auxclick", handleAuxClick, true);
 			container.removeEventListener("mousedown", handleMouseDown, true);
 		};
-	}, [sanitizedHtml, onLinkClick, onMiddleClick, title]);
+	}, [
+		sanitizedHtml,
+		onLinkClick,
+		containerId,
+		handleLinkClick,
+		handleAuxClick,
+		handleMouseDown,
+	]);
 
-	// Update link styles based on loading state and link type
-	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+	// Optimized link styling - batch process links and prioritize visible ones
 	useEffect(() => {
-		const container = document.getElementById(
-			`wikipedia-content-${title.replace(/\s+/g, "-")}`,
-		);
-		if (!container) return;
+		const container = document.getElementById(containerId);
+		if (!container || !sanitizedHtml) return;
 
-		const links = container.querySelectorAll("a[href]");
+		const links = Array.from(
+			container.querySelectorAll("a[href]"),
+		) as HTMLAnchorElement[];
 		const hasLoadingLinks = loadingLinks && loadingLinks.size > 0;
 
-		console.log(`🎨 Styling ${links.length} links in container...`);
-		let wikipediaCount = 0;
-		let externalCount = 0;
+		// Process links in batches to avoid blocking the main thread
+		const BATCH_SIZE = 50;
+		let currentBatch = 0;
+		const totalBatches = Math.ceil(links.length / BATCH_SIZE);
 
-		for (const link of links) {
-			const href = link.getAttribute("href");
-			if (!href) continue;
+		// Create an intersection observer to prioritize visible links (if supported)
+		const visibleLinks = new Set<HTMLAnchorElement>();
+		let observer: IntersectionObserver | null = null;
 
-			// Check if this is a Wikipedia link
-			const isWikipediaLink =
-				href.startsWith("./") ||
-				href.startsWith("/wiki/") ||
-				href.includes("wikipedia.org/wiki/");
-
-			// Add appropriate classes for styling
-			if (isWikipediaLink) {
-				link.classList.add("wikipedia-link");
-				link.classList.remove("external-link");
-				wikipediaCount++;
-
-				// Debug: Check what classes are actually on the element
-				console.log(`📘 Wikipedia link: ${href} - Classes: ${link.className}`);
-
-				// Handle loading states for Wikipedia links
-				let articleTitle = "";
-
-				if (href.startsWith("./")) {
-					articleTitle = decodeURIComponent(href.replace("./", "")).replace(
-						/_/g,
-						" ",
-					);
-				} else if (href.startsWith("/wiki/")) {
-					articleTitle = decodeURIComponent(href.replace("/wiki/", "")).replace(
-						/_/g,
-						" ",
-					);
-				} else if (href.includes("wikipedia.org/wiki/")) {
-					const match = href.match(/\/wiki\/([^#?]+)/);
-					if (match?.[1]) {
-						articleTitle = decodeURIComponent(match[1]).replace(/_/g, " ");
+		if (typeof IntersectionObserver !== "undefined") {
+			observer = new IntersectionObserver(
+				(entries) => {
+					for (const entry of entries) {
+						if (entry.isIntersecting) {
+							visibleLinks.add(entry.target as HTMLAnchorElement);
+						} else {
+							visibleLinks.delete(entry.target as HTMLAnchorElement);
+						}
 					}
-				}
+				},
+				{
+					root: container,
+					rootMargin: "100px", // Process links slightly before they come into view
+					threshold: 0,
+				},
+			);
 
-				// Remove all loading-related classes first
-				link.classList.remove("loading-link", "disabled-link");
+			// Start observing all links
+			for (const link of links) {
+				observer.observe(link);
+			}
 
-				if (articleTitle && hasLoadingLinks) {
-					if (loadingLinks.has(articleTitle)) {
-						// This specific link is loading
-						link.classList.add("loading-link");
-					} else {
-						// Other links are disabled while something is loading
-						link.classList.add("disabled-link");
-					}
-				}
-			} else {
-				// External link
-				link.classList.add("external-link");
-				link.classList.remove(
-					"wikipedia-link",
-					"loading-link",
-					"disabled-link",
+			// Give the observer a moment to detect visible links, then start processing
+			setTimeout(() => {
+				processBatches();
+			}, 10);
+		} else {
+			// No intersection observer support, start immediately
+			processBatches();
+		}
+
+		const processLinkBatch = (batchIndex: number) => {
+			const startIndex = batchIndex * BATCH_SIZE;
+			const endIndex = Math.min(startIndex + BATCH_SIZE, links.length);
+			const batchLinks = links.slice(startIndex, endIndex);
+
+			// Process visible links first if we have intersection observer, otherwise process in order
+			let orderedBatchLinks = batchLinks;
+			if (observer && visibleLinks.size > 0) {
+				const visibleBatchLinks = batchLinks.filter((link) =>
+					visibleLinks.has(link),
 				);
-				externalCount++;
+				const nonVisibleBatchLinks = batchLinks.filter(
+					(link) => !visibleLinks.has(link),
+				);
+				orderedBatchLinks = [...visibleBatchLinks, ...nonVisibleBatchLinks];
+			}
 
-				// Debug: Check what classes are actually on the element
-				console.log(`🌐 External link: ${href} - Classes: ${link.className}`);
+			for (const link of orderedBatchLinks) {
+				const href = link.getAttribute("href");
+				if (!href) continue;
 
-				// Ensure external links open in new tab
-				link.setAttribute("target", "_blank");
-				link.setAttribute("rel", "noopener noreferrer");
+				if (isWikipediaLink(href)) {
+					link.classList.add("wikipedia-link");
+					link.classList.remove("external-link");
+
+					// Only process loading states if there are loading links
+					if (hasLoadingLinks) {
+						const articleTitle = extractArticleTitle(href);
+						link.classList.remove("loading-link", "disabled-link");
+
+						if (articleTitle && loadingLinks.has(articleTitle)) {
+							link.classList.add("loading-link");
+						} else {
+							link.classList.add("disabled-link");
+						}
+					} else {
+						link.classList.remove("loading-link", "disabled-link");
+					}
+				} else {
+					// External link
+					link.classList.add("external-link");
+					link.classList.remove(
+						"wikipedia-link",
+						"loading-link",
+						"disabled-link",
+					);
+					link.setAttribute("target", "_blank");
+					link.setAttribute("rel", "noopener noreferrer");
+				}
+			}
+		};
+
+		function processBatches() {
+			if (currentBatch < totalBatches) {
+				// Use requestAnimationFrame to avoid blocking the main thread
+				requestAnimationFrame(() => {
+					processLinkBatch(currentBatch);
+					currentBatch++;
+
+					// Schedule next batch with a small delay to keep UI responsive
+					if (currentBatch < totalBatches) {
+						setTimeout(processBatches, 0);
+					}
+				});
 			}
 		}
 
-		console.log(
-			`✅ Applied styles: ${wikipediaCount} Wikipedia links (green), ${externalCount} external links (blue)`,
-		);
-	}, [loadingLinks, title, sanitizedHtml]);
+		// Cleanup function
+		return () => {
+			if (observer) {
+				observer.disconnect();
+			}
+		};
+	}, [loadingLinks, containerId, sanitizedHtml]);
 
 	if (!sanitizedHtml) {
 		return (
-			<div className="flex items-center justify-center p-8">
-				<div className="text-gray-500">Loading article content...</div>
-			</div>
+			<div className="text-muted-foreground">Loading article content...</div>
 		);
 	}
 
 	return (
 		<div
-			id={`wikipedia-content-${title.replace(/\s+/g, "-")}`}
+			id={containerId}
 			className="wikipedia-article-content prose prose-sm max-w-none"
 			// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
 			dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
@@ -442,12 +409,12 @@ export const wikipediaStyles = `
   .wikipedia-article-content a.wikipedia-link,
   .wikipedia-article-content a.wikipedia-link:link,
   .wikipedia-article-content a.wikipedia-link:visited {
-    color: rgb(34 197 94) !important;
+    color: oklch(0.7686 0.1647 70.0804) !important;
   }
 
   .wikipedia-article-content a.wikipedia-link:hover {
-    color: rgb(22 163 74) !important;
-    border-bottom-color: rgb(22 163 74) !important;
+    color: oklch(0.7686 0.1647 70.0804) !important;
+    border-bottom-color: oklch(0.7686 0.1647 70.0804) !important;
   }
 
   /* External links - normal blue color with external icon and high specificity */

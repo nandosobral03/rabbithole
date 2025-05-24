@@ -56,127 +56,135 @@ export function WikipediaArticlePanel({
 
 	return (
 		<div
-			className="absolute top-0 right-0 z-20 flex h-full flex-col border-gray-200 border-l bg-white shadow-2xl transition-transform duration-300 ease-in-out"
+			className="absolute top-0 right-0 z-20 flex h-full flex-col border-border border-l bg-card shadow-2xl transition-transform duration-300 ease-in-out"
 			style={{
 				width: isCollapsed ? "60px" : `${panelWidth}px`,
-				transform: "translateX(0)",
+				transform: isDetailPanelOpen ? "translateX(0)" : "translateX(100%)",
 			}}
 		>
 			{/* Resize Handle */}
-			<div
-				className="absolute top-0 left-0 h-full w-1 cursor-col-resize bg-gray-300 transition-colors duration-200 hover:bg-blue-500"
-				onMouseDown={onPanelResize}
-			/>
+			{!isCollapsed && (
+				<div
+					className="absolute top-0 left-0 h-full w-1 cursor-col-resize bg-border transition-colors duration-200 hover:bg-primary"
+					onMouseDown={onPanelResize}
+				/>
+			)}
 
 			{/* Collapse/Expand Button */}
-			<div className="-translate-y-1/2 absolute top-1/2 left-2 z-30 transform">
-				<Button
-					variant="outline"
-					size="icon"
-					onClick={toggleCollapse}
-					className="h-8 w-8 bg-white shadow-md hover:shadow-lg"
-				>
-					{isCollapsed ? (
-						<ChevronLeft className="h-4 w-4" />
-					) : (
-						<ChevronRight className="h-4 w-4" />
-					)}
-				</Button>
-			</div>
+			<Button
+				variant="outline"
+				size="icon"
+				onClick={() => setIsCollapsed(!isCollapsed)}
+				className="h-8 w-8 bg-card shadow-md hover:shadow-lg"
+				style={{
+					position: "absolute",
+					top: "50%",
+					left: isCollapsed ? "10px" : "-20px",
+					transform: "translateY(-50%)",
+					zIndex: 30,
+				}}
+			>
+				{isCollapsed ? <ChevronLeft /> : <ChevronRight />}
+			</Button>
 
 			{!isCollapsed && (
 				<>
 					{/* Header */}
-					<div className="flex items-center justify-between border-gray-200 border-b p-6">
+					<div className="flex items-center justify-between border-border border-b p-6">
 						<div className="flex min-w-0 flex-1 items-center gap-3">
-							<h3 className="min-w-0 flex-1 truncate font-semibold text-gray-900 text-xl">
+							<h3 className="min-w-0 flex-1 truncate font-semibold text-card-foreground text-xl">
 								{selectedNode.title}
 							</h3>
+						</div>
+
+						<div className="flex flex-shrink-0 items-center gap-2">
+							{/* Back Button */}
 							{navigationHistory.length > 0 && (
 								<Button
-									variant="outline"
+									variant="ghost"
 									size="sm"
 									onClick={onGoBackToParent}
-									className="flex flex-shrink-0 items-center gap-2 text-gray-600 hover:text-gray-800"
+									className="flex flex-shrink-0 items-center gap-2 text-muted-foreground hover:text-card-foreground"
 									title={`Back to ${
 										graphData.nodes.find(
-											(n) =>
-												n.id ===
+											(node) =>
+												node.id ===
 												navigationHistory[navigationHistory.length - 1],
-										)?.title || "Previous Article"
+										)?.title || "parent"
 									}`}
 								>
 									<ArrowLeft className="h-4 w-4" />
 									Back
 								</Button>
 							)}
-						</div>
-						<div className="ml-3 flex flex-shrink-0 items-center gap-2">
+
+							{/* Remove Button */}
 							<Button
-								variant="outline"
+								variant="ghost"
 								size="sm"
 								onClick={() => onRemoveNode(selectedNode)}
-								className="flex items-center gap-2 text-red-600 hover:border-red-300 hover:text-red-700"
+								className="flex items-center gap-2 text-destructive hover:border-destructive/30 hover:text-destructive"
+								title="Remove this article and its orphaned connections"
 							>
 								<Trash2 className="h-4 w-4" />
 								Remove
 							</Button>
+
+							{/* Close Button */}
 							<Button
 								variant="ghost"
-								size="icon"
+								size="sm"
 								onClick={() => setIsDetailPanelOpen(false)}
+								className="flex items-center gap-2"
 							>
-								<X className="h-5 w-5" />
+								<X className="h-4 w-4" />
+								Close
 							</Button>
 						</div>
 					</div>
 
 					{/* Content */}
-					<div className="flex-1 space-y-4 overflow-y-auto p-6">
-						<div className="mb-6 flex items-center gap-3">
+					<div className="flex-1 overflow-y-auto p-6">
+						<div className="space-y-4">
+							{/* External Link */}
 							<a
 								href={selectedNode.url}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="inline-flex items-center gap-2 text-blue-600 hover:underline"
+								className="inline-flex items-center gap-2 text-primary hover:underline"
 							>
 								<ExternalLink className="h-4 w-4" />
 								View on Wikipedia
 							</a>
-						</div>
 
-						{/* Full Article Content */}
-						{selectedNode.fullHtml ? (
+							{/* Article Content */}
 							<WikipediaArticleViewer
 								htmlContent={selectedNode.fullHtml}
 								title={selectedNode.title}
+								loadingLinks={loadingLinks}
 								onLinkClick={onLinkClick}
 								onMiddleClick={onMiddleClick}
-								loadingLinks={loadingLinks}
 							/>
-						) : (
-							<div className="text-gray-500 italic">
-								Loading full article content...
-							</div>
-						)}
+						</div>
 					</div>
 				</>
 			)}
 
-			{/* Collapsed state content */}
+			{/* Collapsed State - Vertical Title */}
 			{isCollapsed && (
-				<div className="flex h-full flex-col items-center justify-center p-2">
-					<div className="-rotate-90 mb-4 transform whitespace-nowrap font-medium text-gray-600 text-sm">
+				<div className="flex h-full items-center justify-center p-2">
+					<div className="-rotate-90 mb-4 transform whitespace-nowrap font-medium text-muted-foreground text-sm">
 						{selectedNode.title}
 					</div>
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={() => setIsDetailPanelOpen(false)}
-						className="mb-2"
-					>
-						<X className="h-4 w-4" />
-					</Button>
+				</div>
+			)}
+
+			{/* Loading State */}
+			{!selectedNode.fullHtml && !isCollapsed && (
+				<div className="flex h-full items-center justify-center">
+					<div className="text-muted-foreground italic">
+						Loading article content...
+					</div>
 				</div>
 			)}
 		</div>
