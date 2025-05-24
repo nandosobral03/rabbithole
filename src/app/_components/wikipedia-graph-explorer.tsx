@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	ArrowLeft,
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
@@ -70,30 +71,69 @@ const generateNodeColor = (title: string): string => {
 	return `hsl(${hue}, 70%, 60%)`;
 };
 
-const calculateNodeSize = (content: string, isRoot = false): number => {
-	const MIN_SIZE = 8;
-	const MAX_SIZE = 25;
-	const ROOT_BONUS = 5;
+const calculateNodeSize = (
+	content: string,
+	outgoingLinks: WikipediaLink[] = [],
+	isRoot = false,
+): number => {
+	const MIN_SIZE = 6;
+	const MAX_SIZE = 40;
 
 	// Base size on content length (characters)
 	const contentLength = content.length;
 
-	// Scale content length to size range
-	// Typical Wikipedia article summaries: 200-2000 characters
-	// Full articles: 1000-50000+ characters
-	const normalizedLength =
-		Math.log(Math.max(contentLength, 100)) / Math.log(50000);
-	const scaledSize = MIN_SIZE + normalizedLength * (MAX_SIZE - MIN_SIZE);
+	// Use a more aggressive scaling function for better differentiation
+	// Short articles: 200-1000 chars, Medium: 1000-5000, Long: 5000+
+	let scaledSize: number;
 
-	// Clamp to min/max bounds
-	let size = Math.max(MIN_SIZE, Math.min(MAX_SIZE, scaledSize));
-
-	// Add bonus for root nodes
-	if (isRoot) {
-		size += ROOT_BONUS;
+	if (contentLength < 500) {
+		// Very short articles - smaller nodes
+		scaledSize = MIN_SIZE + (contentLength / 500) * 8;
+	} else if (contentLength < 2000) {
+		// Short to medium articles
+		scaledSize = MIN_SIZE + 8 + ((contentLength - 500) / 1500) * 12;
+	} else if (contentLength < 10000) {
+		// Medium to long articles
+		scaledSize = MIN_SIZE + 20 + ((contentLength - 2000) / 8000) * 12;
+	} else {
+		// Very long articles - largest nodes
+		scaledSize =
+			MIN_SIZE + 32 + Math.min(8, Math.log(contentLength / 10000) * 4);
 	}
 
-	return Math.round(size);
+	// Count only Wikipedia article links (filter out external links, files, categories, etc.)
+	const wikipediaLinksCount = outgoingLinks.filter((link) => {
+		const title = link.title.toLowerCase();
+		// Exclude common non-article namespaces
+		return (
+			!title.startsWith("file:") &&
+			!title.startsWith("category:") &&
+			!title.startsWith("template:") &&
+			!title.startsWith("help:") &&
+			!title.startsWith("wikipedia:") &&
+			!title.startsWith("user:") &&
+			!title.startsWith("talk:") &&
+			!title.includes(":") && // Most namespaced pages have colons
+			title.length > 1
+		); // Exclude very short titles
+	}).length;
+
+	// Factor in Wikipedia links - articles with more connections are more important
+	// Scale links count: 0-10 links = no bonus, 10-50 = small bonus, 50+ = larger bonus
+	let linkBonus = 0;
+	if (wikipediaLinksCount > 10) {
+		if (wikipediaLinksCount < 50) {
+			linkBonus = ((wikipediaLinksCount - 10) / 40) * 6; // Up to 6px bonus
+		} else {
+			linkBonus = 6 + Math.min(4, Math.log(wikipediaLinksCount / 50) * 3); // Up to 10px total bonus
+		}
+	}
+
+	// Combine content size and link bonus
+	const finalSize = scaledSize + linkBonus;
+
+	// Clamp to min/max bounds
+	return Math.round(Math.max(MIN_SIZE, Math.min(MAX_SIZE, finalSize)));
 };
 
 export function WikipediaGraphExplorer() {
@@ -108,6 +148,7 @@ export function WikipediaGraphExplorer() {
 	const [panelWidth, setPanelWidth] = useState(700);
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
+	const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const graphRef = useRef<any>(null);
@@ -116,10 +157,19 @@ export function WikipediaGraphExplorer() {
 	useEffect(() => {
 		if (graphRef.current && graphData.nodes.length > 0) {
 			// Configure the charge (repulsion) force for node separation
-			graphRef.current.d3Force("charge").strength(-800).distanceMax(200);
+			graphRef.current.d3Force("charge").strength(-1200).distanceMax(300);
 
-			// Configure the link force for connection distance
-			graphRef.current.d3Force("link").distance(150);
+			// Configure the link force for connection distance - make it more flexible
+			graphRef.current.d3Force("link").distance(120).strength(0.3);
+
+			// Configure center force to keep nodes from drifting too far
+			graphRef.current.d3Force("center").strength(0.1);
+
+			// Add collision detection for better node spacing
+			const d3 = graphRef.current.d3;
+			if (d3 && d3.forceCollide) {
+				graphRef.current.d3Force("collision", d3.forceCollide().radius(30));
+			}
 
 			// Reheat the simulation to apply the new forces
 			graphRef.current.d3ReheatSimulation();
@@ -156,7 +206,7 @@ export function WikipediaGraphExplorer() {
 					url: pageData.url,
 					outgoingLinks: pageData.links,
 					expanded: false,
-					val: calculateNodeSize(pageData.content, isRoot),
+					val: calculateNodeSize(pageData.content, pageData.links, isRoot),
 					color: generateNodeColor(pageData.title),
 				};
 
@@ -204,7 +254,7 @@ export function WikipediaGraphExplorer() {
 							url: link.url,
 							outgoingLinks: [],
 							expanded: false,
-							val: calculateNodeSize("Loading...", false),
+							val: calculateNodeSize("Loading...", [], false),
 							color: generateNodeColor(link.title),
 						};
 						newNodes.push(placeholderNode);
@@ -249,11 +299,34 @@ export function WikipediaGraphExplorer() {
 	};
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const handleNodeClick = useCallback((node: any) => {
-		setSelectedNode(node as GraphNode);
-		setIsDetailPanelOpen(true);
-		setIsCollapsed(false);
-	}, []);
+	const handleNodeClick = useCallback(
+		(node: any) => {
+			const clickedNode = node as GraphNode;
+
+			// Add current node to navigation history if we're switching from another node
+			if (selectedNode && selectedNode.id !== clickedNode.id) {
+				setNavigationHistory((prev) => [...prev, selectedNode.id]);
+			}
+
+			setSelectedNode(clickedNode);
+			setIsDetailPanelOpen(true);
+			setIsCollapsed(false);
+		},
+		[selectedNode],
+	);
+
+	const goBackToParent = useCallback(() => {
+		if (navigationHistory.length === 0) return;
+
+		const parentNodeId = navigationHistory[navigationHistory.length - 1];
+		const parentNode = graphData.nodes.find((node) => node.id === parentNodeId);
+
+		if (parentNode) {
+			// Remove the last item from history
+			setNavigationHistory((prev) => prev.slice(0, -1));
+			setSelectedNode(parentNode);
+		}
+	}, [navigationHistory, graphData.nodes]);
 
 	const handleNodeRightClick = useCallback(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -296,6 +369,12 @@ export function WikipediaGraphExplorer() {
 						newSet.delete(title);
 						return newSet;
 					});
+
+					// Add current node to navigation history since we're switching via link click
+					if (selectedNode) {
+						setNavigationHistory((prev) => [...prev, selectedNode.id]);
+					}
+
 					return;
 				}
 
@@ -327,6 +406,12 @@ export function WikipediaGraphExplorer() {
 						newSet.delete(title);
 						return newSet;
 					});
+
+					// Add current node to navigation history since we're switching via link click
+					if (selectedNode) {
+						setNavigationHistory((prev) => [...prev, selectedNode.id]);
+					}
+
 					return;
 				}
 
@@ -357,6 +442,12 @@ export function WikipediaGraphExplorer() {
 						newSet.delete(title);
 						return newSet;
 					});
+
+					// Add current node to navigation history since we're switching via link click
+					if (selectedNode) {
+						setNavigationHistory((prev) => [...prev, selectedNode.id]);
+					}
+
 					return;
 				}
 
@@ -388,6 +479,12 @@ export function WikipediaGraphExplorer() {
 						newSet.delete(title);
 						return newSet;
 					});
+
+					// Add current node to navigation history since we're switching via link click
+					if (selectedNode) {
+						setNavigationHistory((prev) => [...prev, selectedNode.id]);
+					}
+
 					return;
 				}
 
@@ -402,7 +499,7 @@ export function WikipediaGraphExplorer() {
 					url: pageData.url,
 					outgoingLinks: pageData.links,
 					expanded: false,
-					val: calculateNodeSize(pageData.content, false),
+					val: calculateNodeSize(pageData.content, pageData.links, false),
 					color: generateNodeColor(actualTitle),
 				};
 
@@ -421,9 +518,190 @@ export function WikipediaGraphExplorer() {
 				// Switch to the new node in the detail panel
 				setSelectedNode(newNode);
 
+				// Add current node to navigation history since we're switching via link click
+				if (selectedNode) {
+					setNavigationHistory((prev) => [...prev, selectedNode.id]);
+				}
+
 				console.log("✅ Successfully added and switched to:", actualTitle);
 			} catch (error) {
 				console.error(`Failed to fetch and add ${title} to graph:`, error);
+			} finally {
+				// Always remove loading state
+				setLoadingLinks((prev) => {
+					const newSet = new Set(prev);
+					newSet.delete(title);
+					return newSet;
+				});
+			}
+		},
+		[selectedNode, graphData.nodes, graphData.links, fetchPage],
+	);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+	const handleArticleMiddleClick = useCallback(
+		async (title: string) => {
+			if (!selectedNode) return;
+
+			// Add immediate loading state
+			setLoadingLinks((prev) => new Set(prev).add(title));
+
+			try {
+				console.log("🖱️ Middle clicked article link:", title);
+
+				// Check if we already have this article in the graph (quick check first)
+				const existingNode = graphData.nodes.find((n) => n.id === title);
+				const linkId = `${selectedNode.id}->${title}`;
+				const existingLink = graphData.links.find((l) => l.id === linkId);
+
+				// If the node and link already exist, don't switch view but just log
+				if (existingNode && existingLink) {
+					console.log(
+						"✅ Article already exists in graph (middle click):",
+						title,
+					);
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
+					return;
+				}
+
+				// If we have the node but not the link (different path to same article)
+				if (existingNode && !existingLink) {
+					console.log(
+						"🔗 Adding new edge to existing node (middle click):",
+						selectedNode.id,
+						"->",
+						title,
+					);
+
+					// Add the new edge
+					setGraphData((prevData) => ({
+						nodes: prevData.nodes,
+						links: [
+							...prevData.links,
+							{
+								source: selectedNode.id,
+								target: title,
+								id: linkId,
+							},
+						],
+					}));
+
+					// Don't switch to the new node - keep current selection
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
+					return;
+				}
+
+				// Use the raw tRPC client to fetch new article
+				const pageData = await fetchPage({ title });
+				const actualTitle = pageData.title;
+
+				console.log(
+					"📍 Wikipedia returned article (middle click):",
+					actualTitle,
+				);
+
+				// Check again with the actual title returned by Wikipedia
+				const existingNodeByActualTitle = graphData.nodes.find(
+					(n) => n.id === actualTitle,
+				);
+				const actualLinkId = `${selectedNode.id}->${actualTitle}`;
+				const existingLinkByActualTitle = graphData.links.find(
+					(l) => l.id === actualLinkId,
+				);
+
+				// If the node and link already exist with actual title, don't switch
+				if (existingNodeByActualTitle && existingLinkByActualTitle) {
+					console.log(
+						"✅ Article already exists in graph (by actual title, middle click):",
+						actualTitle,
+					);
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
+					return;
+				}
+
+				// If we have the node but not the link (different path to same article)
+				if (existingNodeByActualTitle && !existingLinkByActualTitle) {
+					console.log(
+						"🔗 Adding new edge to existing node (by actual title, middle click):",
+						selectedNode.id,
+						"->",
+						actualTitle,
+					);
+
+					// Add the new edge
+					setGraphData((prevData) => ({
+						nodes: prevData.nodes,
+						links: [
+							...prevData.links,
+							{
+								source: selectedNode.id,
+								target: actualTitle,
+								id: actualLinkId,
+							},
+						],
+					}));
+
+					// Don't switch to the new node - keep current selection
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
+					return;
+				}
+
+				// Add new node and edge to the graph
+				console.log(
+					"➕ Adding new article to graph (middle click):",
+					actualTitle,
+				);
+
+				const newNode: GraphNode = {
+					id: actualTitle,
+					title: actualTitle,
+					content: pageData.content,
+					fullHtml: pageData.fullHtml,
+					url: pageData.url,
+					outgoingLinks: pageData.links,
+					expanded: false,
+					val: calculateNodeSize(pageData.content, pageData.links, false),
+					color: generateNodeColor(actualTitle),
+				};
+
+				setGraphData((prevData) => ({
+					nodes: [...prevData.nodes, newNode],
+					links: [
+						...prevData.links,
+						{
+							source: selectedNode.id,
+							target: actualTitle,
+							id: actualLinkId,
+						},
+					],
+				}));
+
+				// Don't switch to the new node - keep current selection
+				console.log(
+					"✅ Successfully added (middle click, no switch):",
+					actualTitle,
+				);
+			} catch (error) {
+				console.error(
+					`Failed to fetch and add ${title} to graph (middle click):`,
+					error,
+				);
 			} finally {
 				// Always remove loading state
 				setLoadingLinks((prev) => {
@@ -577,12 +855,12 @@ export function WikipediaGraphExplorer() {
 					nodeLabel="title"
 					nodeVal="val"
 					nodeColor="color"
-					d3AlphaDecay={0.005}
-					d3VelocityDecay={0.3}
+					d3AlphaDecay={0.01}
+					d3VelocityDecay={0.4}
 					linkDirectionalArrowLength={6}
 					linkDirectionalArrowRelPos={1}
-					linkCurvature={0.15}
-					linkDirectionalParticles={1}
+					linkCurvature={0.05}
+					linkDirectionalParticles={0}
 					linkDirectionalParticleSpeed={0.006}
 					onNodeClick={handleNodeClick}
 					onNodeRightClick={handleNodeRightClick}
@@ -729,9 +1007,23 @@ export function WikipediaGraphExplorer() {
 						<>
 							{/* Header */}
 							<div className="p-6 border-b border-gray-200 flex items-center justify-between">
-								<h3 className="text-xl font-semibold text-gray-900 truncate pr-4">
-									{selectedNode.title}
-								</h3>
+								<div className="flex items-center gap-3 flex-1">
+									<h3 className="text-xl font-semibold text-gray-900 truncate">
+										{selectedNode.title}
+									</h3>
+									{navigationHistory.length > 0 && (
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={goBackToParent}
+											className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+											title={`Back to ${graphData.nodes.find((n) => n.id === navigationHistory[navigationHistory.length - 1])?.title || "Previous Article"}`}
+										>
+											<ArrowLeft className="h-4 w-4" />
+											Back
+										</Button>
+									)}
+								</div>
 								<div className="flex items-center gap-2">
 									<Button
 										variant="outline"
@@ -772,6 +1064,7 @@ export function WikipediaGraphExplorer() {
 										htmlContent={selectedNode.fullHtml}
 										title={selectedNode.title}
 										onLinkClick={handleArticleLinkClick}
+										onMiddleClick={handleArticleMiddleClick}
 										loadingLinks={loadingLinks}
 									/>
 								) : (

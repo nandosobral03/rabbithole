@@ -7,6 +7,7 @@ interface WikipediaArticleViewerProps {
 	htmlContent: string;
 	title: string;
 	onLinkClick?: (title: string) => void;
+	onMiddleClick?: (title: string) => void;
 	loadingLinks?: Set<string>;
 }
 
@@ -14,6 +15,7 @@ export function WikipediaArticleViewer({
 	htmlContent,
 	title,
 	onLinkClick,
+	onMiddleClick,
 	loadingLinks,
 }: WikipediaArticleViewerProps) {
 	const [sanitizedHtml, setSanitizedHtml] = useState("");
@@ -104,12 +106,34 @@ export function WikipediaArticleViewer({
 		tempDiv.innerHTML = cleanHtml;
 		const links = tempDiv.querySelectorAll("a[href]");
 		console.log(`Found ${links.length} links in content:`);
+
+		let wikipediaLinkCount = 0;
+		let externalLinkCount = 0;
+
 		links.forEach((link, index) => {
-			if (index < 5) {
-				// Log first 5 links
-				console.log(`Link ${index}:`, link.getAttribute("href"));
+			const href = link.getAttribute("href");
+			const isWikipediaLink =
+				href?.startsWith("./") ||
+				href?.startsWith("/wiki/") ||
+				href?.includes("wikipedia.org/wiki/");
+
+			if (isWikipediaLink) {
+				wikipediaLinkCount++;
+			} else {
+				externalLinkCount++;
+			}
+
+			if (index < 10) {
+				// Log first 10 links with their type
+				console.log(
+					`Link ${index}: ${href} (${isWikipediaLink ? "Wikipedia" : "External"})`,
+				);
 			}
 		});
+
+		console.log(
+			`Wikipedia links: ${wikipediaLinkCount}, External links: ${externalLinkCount}`,
+		);
 	}, [htmlContent]);
 
 	useEffect(() => {
@@ -132,53 +156,88 @@ export function WikipediaArticleViewer({
 			console.log("🔍 Click detected on:", e.target);
 
 			const target = e.target as HTMLElement;
+			const mouseEvent = e as MouseEvent;
 
 			// Handle clicks on anchor tags or their children
 			const anchor = target.closest("a");
 
 			if (anchor) {
 				console.log("🎯 Found anchor tag:", anchor);
-				console.log("⛔ Preventing default navigation");
-				e.preventDefault();
-				e.stopPropagation();
 
 				const href = anchor.getAttribute("href");
 				console.log("🔗 Anchor href attribute:", href);
 
 				if (href) {
-					// Handle both relative and absolute Wikipedia links
-					let articleTitle = "";
+					// Check if this is a Wikipedia link
+					const isWikipediaLink =
+						href.startsWith("./") ||
+						href.startsWith("/wiki/") ||
+						href.includes("wikipedia.org/wiki/");
 
-					if (href.startsWith("./")) {
-						// Wikipedia HTML API format: ./Article_name
-						console.log("📝 Processing Wikipedia HTML API relative link");
-						articleTitle = decodeURIComponent(href.replace("./", "")).replace(
-							/_/g,
-							" ",
-						);
-					} else if (href.startsWith("/wiki/")) {
-						// Traditional Wikipedia link format: /wiki/Article_name
-						console.log("📝 Processing traditional Wikipedia link");
-						articleTitle = decodeURIComponent(
-							href.replace("/wiki/", ""),
-						).replace(/_/g, " ");
-					} else if (href.includes("wikipedia.org/wiki/")) {
-						// Absolute Wikipedia link: https://en.wikipedia.org/wiki/Article_name
-						console.log("🌐 Processing absolute Wikipedia link");
-						const match = href.match(/\/wiki\/([^#?]+)/);
-						if (match?.[1]) {
-							articleTitle = decodeURIComponent(match[1]).replace(/_/g, " ");
+					if (isWikipediaLink) {
+						// Handle Wikipedia links with our custom logic
+						console.log("⛔ Preventing default navigation for Wikipedia link");
+						e.preventDefault();
+						e.stopPropagation();
+
+						// Handle both relative and absolute Wikipedia links
+						let articleTitle = "";
+
+						if (href.startsWith("./")) {
+							// Wikipedia HTML API format: ./Article_name
+							console.log("📝 Processing Wikipedia HTML API relative link");
+							articleTitle = decodeURIComponent(href.replace("./", "")).replace(
+								/_/g,
+								" ",
+							);
+						} else if (href.startsWith("/wiki/")) {
+							// Traditional Wikipedia link format: /wiki/Article_name
+							console.log("📝 Processing traditional Wikipedia link");
+							articleTitle = decodeURIComponent(
+								href.replace("/wiki/", ""),
+							).replace(/_/g, " ");
+						} else if (href.includes("wikipedia.org/wiki/")) {
+							// Absolute Wikipedia link: https://en.wikipedia.org/wiki/Article_name
+							console.log("🌐 Processing absolute Wikipedia link");
+							const match = href.match(/\/wiki\/([^#?]+)/);
+							if (match?.[1]) {
+								articleTitle = decodeURIComponent(match[1]).replace(/_/g, " ");
+							}
+						}
+
+						if (articleTitle?.trim()) {
+							// Check if it's a middle mouse button click (button 1)
+							if (mouseEvent.button === 1) {
+								console.log(
+									"🖱️ Middle click detected - adding node without switching view",
+								);
+								// Call onLinkClick with a special flag or create a separate handler
+								// For now, we'll pass the article title but indicate it's a middle click
+								if (onMiddleClick) {
+									// We need to modify the parent component to handle this
+									// For now, let's just add the node without switching
+									console.log("✅ Adding node via middle click:", articleTitle);
+									onMiddleClick(articleTitle);
+								}
+							} else {
+								console.log(
+									"✅ Calling onLinkClick with article:",
+									articleTitle,
+								);
+								onLinkClick(articleTitle);
+							}
+						} else {
+							console.log("❌ No valid article title extracted from:", href);
 						}
 					} else {
-						console.log("❌ Not a Wikipedia link, href:", href);
-						return;
-					}
-
-					if (articleTitle && articleTitle.trim()) {
-						console.log("✅ Calling onLinkClick with article:", articleTitle);
-						onLinkClick(articleTitle);
-					} else {
-						console.log("❌ No valid article title extracted from:", href);
+						// External link - let it open in new tab (don't prevent default)
+						console.log(
+							"🌐 External link detected, allowing default behavior:",
+							href,
+						);
+						// Ensure it opens in new tab
+						anchor.setAttribute("target", "_blank");
+						anchor.setAttribute("rel", "noopener noreferrer");
 					}
 				} else {
 					console.log("❌ No href attribute found on anchor");
@@ -188,17 +247,52 @@ export function WikipediaArticleViewer({
 			}
 		};
 
+		// Handle middle clicks specifically with auxclick event
+		const handleAuxClick = (e: Event) => {
+			const mouseEvent = e as MouseEvent;
+			if (mouseEvent.button === 1) {
+				// Middle mouse button
+				console.log("🖱️ Auxclick (middle button) detected");
+				handleLinkClick(e);
+			}
+		};
+
+		// Prevent default middle-click behavior on mousedown
+		const handleMouseDown = (e: Event) => {
+			const mouseEvent = e as MouseEvent;
+			const target = e.target as HTMLElement;
+			const anchor = target.closest("a");
+
+			if (anchor && mouseEvent.button === 1) {
+				const href = anchor.getAttribute("href");
+				const isWikipediaLink =
+					href?.startsWith("./") ||
+					href?.startsWith("/wiki/") ||
+					href?.includes("wikipedia.org/wiki/");
+
+				if (isWikipediaLink) {
+					console.log("⛔ Preventing default middle-click behavior");
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			}
+		};
+
 		// Use capture phase to ensure we catch the event early
-		console.log("🔧 Attaching click listener with capture=true");
+		console.log("🔧 Attaching click listeners with capture=true");
 		container.addEventListener("click", handleLinkClick, true);
+		container.addEventListener("auxclick", handleAuxClick, true);
+		container.addEventListener("mousedown", handleMouseDown, true);
 
 		return () => {
-			console.log("🧹 Removing click listener");
+			console.log("🧹 Removing click listeners");
 			container.removeEventListener("click", handleLinkClick, true);
+			container.removeEventListener("auxclick", handleAuxClick, true);
+			container.removeEventListener("mousedown", handleMouseDown, true);
 		};
-	}, [sanitizedHtml, onLinkClick, title]);
+	}, [sanitizedHtml, onLinkClick, onMiddleClick, title]);
 
-	// Update link styles based on loading state
+	// Update link styles based on loading state and link type
 	useEffect(() => {
 		const container = document.getElementById(
 			`wikipedia-content-${title.replace(/\s+/g, "-")}`,
@@ -208,43 +302,84 @@ export function WikipediaArticleViewer({
 		const links = container.querySelectorAll("a[href]");
 		const hasLoadingLinks = loadingLinks && loadingLinks.size > 0;
 
+		console.log(`🎨 Styling ${links.length} links in container...`);
+		let wikipediaCount = 0;
+		let externalCount = 0;
+
 		for (const link of links) {
 			const href = link.getAttribute("href");
 			if (!href) continue;
 
-			let articleTitle = "";
+			// Check if this is a Wikipedia link
+			const isWikipediaLink =
+				href.startsWith("./") ||
+				href.startsWith("/wiki/") ||
+				href.includes("wikipedia.org/wiki/");
 
-			if (href.startsWith("./")) {
-				articleTitle = decodeURIComponent(href.replace("./", "")).replace(
-					/_/g,
-					" ",
-				);
-			} else if (href.startsWith("/wiki/")) {
-				articleTitle = decodeURIComponent(href.replace("/wiki/", "")).replace(
-					/_/g,
-					" ",
-				);
-			} else if (href.includes("wikipedia.org/wiki/")) {
-				const match = href.match(/\/wiki\/([^#?]+)/);
-				if (match?.[1]) {
-					articleTitle = decodeURIComponent(match[1]).replace(/_/g, " ");
+			// Add appropriate classes for styling
+			if (isWikipediaLink) {
+				link.classList.add("wikipedia-link");
+				link.classList.remove("external-link");
+				wikipediaCount++;
+
+				// Debug: Check what classes are actually on the element
+				console.log(`📘 Wikipedia link: ${href} - Classes: ${link.className}`);
+
+				// Handle loading states for Wikipedia links
+				let articleTitle = "";
+
+				if (href.startsWith("./")) {
+					articleTitle = decodeURIComponent(href.replace("./", "")).replace(
+						/_/g,
+						" ",
+					);
+				} else if (href.startsWith("/wiki/")) {
+					articleTitle = decodeURIComponent(href.replace("/wiki/", "")).replace(
+						/_/g,
+						" ",
+					);
+				} else if (href.includes("wikipedia.org/wiki/")) {
+					const match = href.match(/\/wiki\/([^#?]+)/);
+					if (match?.[1]) {
+						articleTitle = decodeURIComponent(match[1]).replace(/_/g, " ");
+					}
 				}
-			}
 
-			// Remove all loading-related classes first
-			link.classList.remove("loading-link", "disabled-link");
+				// Remove all loading-related classes first
+				link.classList.remove("loading-link", "disabled-link");
 
-			if (articleTitle && hasLoadingLinks) {
-				if (loadingLinks.has(articleTitle)) {
-					// This specific link is loading
-					link.classList.add("loading-link");
-				} else {
-					// Other links are disabled while something is loading
-					link.classList.add("disabled-link");
+				if (articleTitle && hasLoadingLinks) {
+					if (loadingLinks.has(articleTitle)) {
+						// This specific link is loading
+						link.classList.add("loading-link");
+					} else {
+						// Other links are disabled while something is loading
+						link.classList.add("disabled-link");
+					}
 				}
+			} else {
+				// External link
+				link.classList.add("external-link");
+				link.classList.remove(
+					"wikipedia-link",
+					"loading-link",
+					"disabled-link",
+				);
+				externalCount++;
+
+				// Debug: Check what classes are actually on the element
+				console.log(`🌐 External link: ${href} - Classes: ${link.className}`);
+
+				// Ensure external links open in new tab
+				link.setAttribute("target", "_blank");
+				link.setAttribute("rel", "noopener noreferrer");
 			}
 		}
-	}, [loadingLinks, title]);
+
+		console.log(
+			`✅ Applied styles: ${wikipediaCount} Wikipedia links (green), ${externalCount} external links (blue)`,
+		);
+	}, [loadingLinks, title, sanitizedHtml]);
 
 	if (!sanitizedHtml) {
 		return (
@@ -290,13 +425,81 @@ export const wikipediaStyles = `
     line-height: 1.6;
   }
 
+  /* Base link styling */
   .wikipedia-article-content a {
-    color: #0645ad;
     text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s ease;
   }
 
   .wikipedia-article-content a:hover {
     text-decoration: underline;
+  }
+
+  /* Wikipedia links - green color with high specificity */
+  .wikipedia-article-content a.wikipedia-link,
+  .wikipedia-article-content a.wikipedia-link:link,
+  .wikipedia-article-content a.wikipedia-link:visited {
+    color: rgb(34 197 94) !important;
+  }
+
+  .wikipedia-article-content a.wikipedia-link:hover {
+    color: rgb(22 163 74) !important;
+    border-bottom-color: rgb(22 163 74) !important;
+  }
+
+  /* External links - normal blue color with external icon and high specificity */
+  .wikipedia-article-content a.external-link,
+  .wikipedia-article-content a.external-link:link,
+  .wikipedia-article-content a.external-link:visited {
+    color: rgb(37 99 235) !important;
+  }
+
+  .wikipedia-article-content a.external-link:hover {
+    color: rgb(29 78 216) !important;
+    border-bottom-color: rgb(29 78 216) !important;
+  }
+
+  .wikipedia-article-content a.external-link::after {
+    content: "↗";
+    font-size: 0.75em;
+    margin-left: 0.25em;
+    opacity: 0.7;
+  }
+
+  /* Default link styling for links that haven't been classified yet */
+  .wikipedia-article-content a:not(.wikipedia-link):not(.external-link) {
+    color: rgb(37 99 235);
+  }
+
+  .wikipedia-article-content a:not(.wikipedia-link):not(.external-link):hover {
+    color: rgb(29 78 216);
+    border-bottom-color: rgb(29 78 216);
+  }
+
+  /* Loading and disabled states for Wikipedia links */
+  .wikipedia-article-content a.loading-link {
+    color: rgb(59 130 246) !important;
+    animation: pulse 1.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .wikipedia-article-content a.disabled-link {
+    color: rgb(156 163 175) !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.02);
+    }
   }
 
   .wikipedia-article-content .infobox {
@@ -387,42 +590,6 @@ export const wikipediaStyles = `
   .wikipedia-article-content .printfooter,
   .wikipedia-article-content .mw-jump-link {
     display: none !important;
-  }
-
-  .wikipedia-article-content a {
-    color: rgb(37 99 235);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: all 0.2s ease;
-  }
-
-  .wikipedia-article-content a:hover {
-    color: rgb(29 78 216);
-    border-bottom-color: rgb(29 78 216);
-  }
-
-  .wikipedia-article-content a.loading-link {
-    color: rgb(59 130 246) !important;
-    animation: pulse 1.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  .wikipedia-article-content a.disabled-link {
-    color: rgb(156 163 175) !important;
-    cursor: not-allowed !important;
-    pointer-events: none;
-    opacity: 0.5;
-  }
-
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-    50% {
-      opacity: 0.6;
-      transform: scale(1.02);
-    }
   }
 
   .wikipedia-article-content h1,
