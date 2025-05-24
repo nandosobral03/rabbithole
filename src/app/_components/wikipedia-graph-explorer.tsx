@@ -3,11 +3,11 @@
 import {
 	ChevronLeft,
 	ChevronRight,
-	Expand,
 	ExternalLink,
 	Info,
 	Loader2,
 	Plus,
+	Trash2,
 	X,
 } from "lucide-react";
 import dynamic from "next/dynamic";
@@ -107,6 +107,7 @@ export function WikipediaGraphExplorer() {
 	const [showInstructions, setShowInstructions] = useState(false);
 	const [panelWidth, setPanelWidth] = useState(700);
 	const [isCollapsed, setIsCollapsed] = useState(false);
+	const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const graphRef = useRef<any>(null);
@@ -272,27 +273,29 @@ export function WikipediaGraphExplorer() {
 		async (title: string) => {
 			if (!selectedNode) return;
 
+			// Add immediate loading state
+			setLoadingLinks((prev) => new Set(prev).add(title));
+
 			try {
 				console.log("🔗 Clicked article link:", title);
 
-				// Use the raw tRPC client to avoid triggering the onSuccess handler
-				const pageData = await fetchPage({ title });
-				const actualTitle = pageData.title;
-
-				console.log("📍 Wikipedia returned article:", actualTitle);
-
-				// Check if we already have this article (by actual title) in the graph
-				const existingNode = graphData.nodes.find((n) => n.id === actualTitle);
-				const linkId = `${selectedNode.id}->${actualTitle}`;
+				// Check if we already have this article in the graph (quick check first)
+				const existingNode = graphData.nodes.find((n) => n.id === title);
+				const linkId = `${selectedNode.id}->${title}`;
 				const existingLink = graphData.links.find((l) => l.id === linkId);
 
-				// If the node and link already exist, just switch to that node
+				// If the node and link already exist, just switch to that node (no API call needed)
 				if (existingNode && existingLink) {
 					console.log(
 						"✅ Article already exists in graph, switching to:",
-						actualTitle,
+						title,
 					);
 					setSelectedNode(existingNode);
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
 					return;
 				}
 
@@ -300,6 +303,67 @@ export function WikipediaGraphExplorer() {
 				if (existingNode && !existingLink) {
 					console.log(
 						"🔗 Adding new edge to existing node:",
+						selectedNode.id,
+						"->",
+						title,
+					);
+
+					// Add the new edge
+					setGraphData((prevData) => ({
+						nodes: prevData.nodes,
+						links: [
+							...prevData.links,
+							{
+								source: selectedNode.id,
+								target: title,
+								id: linkId,
+							},
+						],
+					}));
+
+					setSelectedNode(existingNode);
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
+					return;
+				}
+
+				// Use the raw tRPC client to fetch new article
+				const pageData = await fetchPage({ title });
+				const actualTitle = pageData.title;
+
+				console.log("📍 Wikipedia returned article:", actualTitle);
+
+				// Check again with the actual title returned by Wikipedia
+				const existingNodeByActualTitle = graphData.nodes.find(
+					(n) => n.id === actualTitle,
+				);
+				const actualLinkId = `${selectedNode.id}->${actualTitle}`;
+				const existingLinkByActualTitle = graphData.links.find(
+					(l) => l.id === actualLinkId,
+				);
+
+				// If the node and link already exist with actual title, just switch
+				if (existingNodeByActualTitle && existingLinkByActualTitle) {
+					console.log(
+						"✅ Article already exists in graph (by actual title), switching to:",
+						actualTitle,
+					);
+					setSelectedNode(existingNodeByActualTitle);
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
+					return;
+				}
+
+				// If we have the node but not the link (different path to same article)
+				if (existingNodeByActualTitle && !existingLinkByActualTitle) {
+					console.log(
+						"🔗 Adding new edge to existing node (by actual title):",
 						selectedNode.id,
 						"->",
 						actualTitle,
@@ -313,12 +377,17 @@ export function WikipediaGraphExplorer() {
 							{
 								source: selectedNode.id,
 								target: actualTitle,
-								id: linkId,
+								id: actualLinkId,
 							},
 						],
 					}));
 
-					setSelectedNode(existingNode);
+					setSelectedNode(existingNodeByActualTitle);
+					setLoadingLinks((prev) => {
+						const newSet = new Set(prev);
+						newSet.delete(title);
+						return newSet;
+					});
 					return;
 				}
 
@@ -344,7 +413,7 @@ export function WikipediaGraphExplorer() {
 						{
 							source: selectedNode.id,
 							target: actualTitle,
-							id: linkId,
+							id: actualLinkId,
 						},
 					],
 				}));
@@ -355,9 +424,16 @@ export function WikipediaGraphExplorer() {
 				console.log("✅ Successfully added and switched to:", actualTitle);
 			} catch (error) {
 				console.error(`Failed to fetch and add ${title} to graph:`, error);
+			} finally {
+				// Always remove loading state
+				setLoadingLinks((prev) => {
+					const newSet = new Set(prev);
+					newSet.delete(title);
+					return newSet;
+				});
 			}
 		},
-		[selectedNode, graphData.nodes, graphData.links],
+		[selectedNode, graphData.nodes, graphData.links, fetchPage],
 	);
 
 	const handlePanelResize = useCallback(
@@ -386,6 +462,41 @@ export function WikipediaGraphExplorer() {
 	const toggleCollapse = () => {
 		setIsCollapsed(!isCollapsed);
 	};
+
+	const removeNodeFromGraph = useCallback(
+		(nodeToRemove: GraphNode) => {
+			setGraphData((prevData) => {
+				// Remove the node and all links connected to it
+				const updatedNodes = prevData.nodes.filter(
+					(node) => node.id !== nodeToRemove.id,
+				);
+				const updatedLinks = prevData.links.filter((link) => {
+					// Handle both string IDs and object references from D3
+					const sourceId =
+						typeof link.source === "string"
+							? link.source
+							: (link.source as any)?.id || link.source;
+					const targetId =
+						typeof link.target === "string"
+							? link.target
+							: (link.target as any)?.id || link.target;
+					return sourceId !== nodeToRemove.id && targetId !== nodeToRemove.id;
+				});
+
+				return {
+					nodes: updatedNodes,
+					links: updatedLinks,
+				};
+			});
+
+			// Close the detail panel if we're removing the currently selected node
+			if (selectedNode?.id === nodeToRemove.id) {
+				setSelectedNode(null);
+				setIsDetailPanelOpen(false);
+			}
+		},
+		[selectedNode],
+	);
 
 	return (
 		<div className="h-screen flex bg-gray-50 relative">
@@ -621,13 +732,24 @@ export function WikipediaGraphExplorer() {
 								<h3 className="text-xl font-semibold text-gray-900 truncate pr-4">
 									{selectedNode.title}
 								</h3>
-								<Button
-									variant="ghost"
-									size="icon"
-									onClick={() => setIsDetailPanelOpen(false)}
-								>
-									<X className="h-5 w-5" />
-								</Button>
+								<div className="flex items-center gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => removeNodeFromGraph(selectedNode)}
+										className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:border-red-300"
+									>
+										<Trash2 className="h-4 w-4" />
+										Remove
+									</Button>
+									<Button
+										variant="ghost"
+										size="icon"
+										onClick={() => setIsDetailPanelOpen(false)}
+									>
+										<X className="h-5 w-5" />
+									</Button>
+								</div>
 							</div>
 
 							{/* Content */}
@@ -642,18 +764,6 @@ export function WikipediaGraphExplorer() {
 										<ExternalLink className="h-4 w-4" />
 										View on Wikipedia
 									</a>
-									{!selectedNode.expanded &&
-										selectedNode.outgoingLinks.length > 0 && (
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => expandNode(selectedNode)}
-												className="flex items-center gap-2"
-											>
-												<Expand className="h-4 w-4" />
-												Expand Connections ({selectedNode.outgoingLinks.length})
-											</Button>
-										)}
 								</div>
 
 								{/* Full Article Content */}
@@ -662,6 +772,7 @@ export function WikipediaGraphExplorer() {
 										htmlContent={selectedNode.fullHtml}
 										title={selectedNode.title}
 										onLinkClick={handleArticleLinkClick}
+										loadingLinks={loadingLinks}
 									/>
 								) : (
 									<div className="text-gray-500 italic">
