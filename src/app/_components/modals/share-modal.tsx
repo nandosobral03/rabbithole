@@ -40,7 +40,7 @@ export function ShareModal({
 					<div>
 						<label
 							htmlFor="share-title"
-							className="block font-medium text-card-foreground text-sm mb-2"
+							className="mb-2 block font-medium text-card-foreground text-sm"
 						>
 							Rabbit Hole Name *
 						</label>
@@ -56,7 +56,7 @@ export function ShareModal({
 					<div>
 						<label
 							htmlFor="share-author"
-							className="block font-medium text-card-foreground text-sm mb-2"
+							className="mb-2 block font-medium text-card-foreground text-sm"
 						>
 							Your Name (optional)
 						</label>
@@ -77,7 +77,7 @@ export function ShareModal({
 					</div>
 				</div>
 
-				<div className="mt-6 flex gap-3 justify-end">
+				<div className="mt-6 flex justify-end gap-3">
 					<Button variant="outline" onClick={onClose} disabled={isSharing}>
 						Cancel
 					</Button>

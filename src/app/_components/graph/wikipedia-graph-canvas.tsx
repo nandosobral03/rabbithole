@@ -1,7 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef } from "react";
+import {
+	forwardRef,
+	useCallback,
+	useEffect,
+	useImperativeHandle,
+	useRef,
+} from "react";
 import type { GraphData, GraphNode } from "../types/graph";
 
 // Dynamically import ForceGraph2D to avoid SSR issues
@@ -16,14 +22,39 @@ interface WikipediaGraphCanvasProps {
 	onNodeRightClick?: (node: GraphNode) => void;
 }
 
-export function WikipediaGraphCanvas({
-	graphData,
-	onNodeClick,
-	onBackgroundClick,
-	onNodeRightClick,
-}: WikipediaGraphCanvasProps) {
+export interface GraphCanvasRef {
+	zoomIn: () => void;
+	zoomOut: () => void;
+	zoomReset: () => void;
+}
+
+export const WikipediaGraphCanvas = forwardRef<
+	GraphCanvasRef,
+	WikipediaGraphCanvasProps
+>(({ graphData, onNodeClick, onBackgroundClick, onNodeRightClick }, ref) => {
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const graphRef = useRef<any>(null);
+
+	// Expose zoom methods to parent component
+	useImperativeHandle(ref, () => ({
+		zoomIn: () => {
+			if (graphRef.current) {
+				const currentZoom = graphRef.current.zoom();
+				graphRef.current.zoom(currentZoom * 1.5, 400); // 400ms transition
+			}
+		},
+		zoomOut: () => {
+			if (graphRef.current) {
+				const currentZoom = graphRef.current.zoom();
+				graphRef.current.zoom(currentZoom / 1.5, 400); // 400ms transition
+			}
+		},
+		zoomReset: () => {
+			if (graphRef.current) {
+				graphRef.current.zoomToFit(400, 50); // 400ms transition, 50px padding
+			}
+		},
+	}));
 
 	// Wrapper for right-click handler to match ForceGraph2D's expected signature
 	const handleNodeRightClick = useCallback(
@@ -191,4 +222,4 @@ export function WikipediaGraphCanvas({
 			/>
 		</div>
 	);
-}
+});

@@ -65,7 +65,7 @@ export const wikipediaRouter = createTRPCRouter({
 
 				// Fetch outgoing links from the page
 				const linksResponse = await fetch(
-					`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=links&titles=${encodedTitle}&pllimit=500&plnamespace=0&origin=*`,
+					`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=links&titles=${encodedTitle}&plnamespace=0&origin=*`,
 				);
 
 				if (!linksResponse.ok) {
@@ -150,7 +150,6 @@ export const wikipediaRouter = createTRPCRouter({
 
 						return true;
 					})
-					.slice(0, 50) // Limit to first 50 links for performance
 					.map((link: { title: string }) => ({
 						title: link.title,
 						url: `https://en.wikipedia.org/wiki/${encodeURIComponent(link.title.replace(/ /g, "_"))}`,
@@ -225,7 +224,7 @@ export const wikipediaRouter = createTRPCRouter({
 
 				// Fetch outgoing links from the page
 				const linksResponse = await fetch(
-					`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=links&titles=${encodedTitle}&pllimit=500&plnamespace=0&origin=*`,
+					`https://en.wikipedia.org/w/api.php?action=query&format=json&prop=links&titles=${encodedTitle}&plnamespace=0&origin=*`,
 				);
 
 				if (!linksResponse.ok) {
@@ -310,7 +309,6 @@ export const wikipediaRouter = createTRPCRouter({
 
 						return true;
 					})
-					.slice(0, 50) // Limit to first 50 links for performance
 					.map((link: { title: string }) => ({
 						title: link.title,
 						url: `https://en.wikipedia.org/wiki/${encodeURIComponent(link.title.replace(/ /g, "_"))}`,

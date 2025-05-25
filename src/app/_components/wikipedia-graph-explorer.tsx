@@ -1,9 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "~/trpc/react";
-import { WikipediaGraphCanvas } from "./graph/wikipedia-graph-canvas";
+import {
+	type GraphCanvasRef,
+	WikipediaGraphCanvas,
+} from "./graph/wikipedia-graph-canvas";
 import { useBfsLoading } from "./hooks/use-bfs-loading";
 import { useGraphNavigation } from "./hooks/use-graph-navigation";
 import { useShareRabbithole } from "./hooks/use-share-rabbithole";
@@ -12,6 +15,7 @@ import { WikipediaArticlePanel } from "./panels/wikipedia-article-panel";
 import { GraphControls } from "./shared/graph-controls";
 import { LoadingOverlay } from "./shared/loading-overlay";
 import { ShareSuccessNotification } from "./shared/share-success-notification";
+import { ZoomControls } from "./shared/zoom-controls";
 import type {
 	GraphData,
 	GraphNode,
@@ -38,6 +42,11 @@ export function WikipediaGraphExplorer({
 	});
 	const [panelWidth, setPanelWidth] = useState(900);
 	const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
+
+	// Ref for graph canvas to access zoom methods
+	const graphCanvasRef = useRef<GraphCanvasRef>(null);
+	// Ref to track if initial data has been loaded to prevent double loading
+	const hasLoadedInitialData = useRef(false);
 
 	// Custom hooks
 	const { isLoadingInitialData, loadInitialGraphDataWithBFS } = useBfsLoading({
@@ -72,9 +81,27 @@ export function WikipediaGraphExplorer({
 		setShareAuthor,
 	} = useShareRabbithole();
 
+	// Zoom control handlers
+	const handleZoomIn = useCallback(() => {
+		graphCanvasRef.current?.zoomIn();
+	}, []);
+
+	const handleZoomOut = useCallback(() => {
+		graphCanvasRef.current?.zoomOut();
+	}, []);
+
+	const handleZoomReset = useCallback(() => {
+		graphCanvasRef.current?.zoomReset();
+	}, []);
+
 	// Load initial data with BFS animation when component mounts
 	useEffect(() => {
-		if (initialGraphData && initialGraphData.nodes.length > 0) {
+		if (
+			initialGraphData &&
+			initialGraphData.nodes.length > 0 &&
+			!hasLoadedInitialData.current
+		) {
+			hasLoadedInitialData.current = true;
 			loadInitialGraphDataWithBFS(initialGraphData);
 		}
 	}, [initialGraphData, loadInitialGraphDataWithBFS]);
@@ -180,6 +207,7 @@ export function WikipediaGraphExplorer({
 		[selectedNode, onGraphChange, clearSelection],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	const handleArticleLinkClick = useCallback(
 		async (title: string) => {
 			if (!selectedNode) return;
@@ -616,6 +644,7 @@ export function WikipediaGraphExplorer({
 		[panelWidth],
 	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
 	const removeNodeFromGraph = useCallback(
 		(nodeToRemove: GraphNode) => {
 			if (graphData.nodes.length <= 1) {
@@ -844,11 +873,22 @@ export function WikipediaGraphExplorer({
 
 			{/* Graph Canvas Component */}
 			<WikipediaGraphCanvas
+				ref={graphCanvasRef}
 				graphData={graphData}
 				onNodeClick={handleNodeClick}
 				onBackgroundClick={handleBackgroundClick}
 				onNodeRightClick={handleNodeRightClick}
 			/>
+
+			{/* Zoom Controls */}
+			{graphData.nodes.length > 0 && (
+				<ZoomControls
+					onZoomIn={handleZoomIn}
+					onZoomOut={handleZoomOut}
+					onZoomReset={handleZoomReset}
+					disabled={isLoadingInitialData}
+				/>
+			)}
 
 			{/* Article Panel Component */}
 			{selectedNode && (

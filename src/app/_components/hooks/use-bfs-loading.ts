@@ -36,6 +36,7 @@ export function useBfsLoading({ onGraphDataUpdate }: UseBfsLoadingProps) {
 			const addedNodes = new Set<string>();
 			const nodesToAdd: GraphNode[] = [];
 			const linksToAdd: GraphData["links"] = [];
+			const addedLinks = new Set<string>(); // Track added link IDs to prevent duplicates
 
 			// Build BFS order
 			while (queue.length > 0) {
@@ -57,7 +58,12 @@ export function useBfsLoading({ onGraphDataUpdate }: UseBfsLoadingProps) {
 				});
 
 				for (const link of outgoingLinks) {
-					linksToAdd.push(link);
+					// Only add if we haven't seen this link before
+					if (!addedLinks.has(link.id)) {
+						linksToAdd.push(link);
+						addedLinks.add(link.id);
+					}
+
 					const targetId =
 						typeof link.target === "string"
 							? link.target
@@ -77,14 +83,15 @@ export function useBfsLoading({ onGraphDataUpdate }: UseBfsLoadingProps) {
 						typeof link.target === "string"
 							? link.target
 							: (link.target as GraphNode).id;
-					return (
-						targetId === currentNode.id &&
-						!linksToAdd.some((l) => l.id === link.id)
-					);
+					return targetId === currentNode.id;
 				});
 
 				for (const link of incomingLinks) {
-					linksToAdd.push(link);
+					// Only add if we haven't seen this link before
+					if (!addedLinks.has(link.id)) {
+						linksToAdd.push(link);
+						addedLinks.add(link.id);
+					}
 				}
 			}
 
