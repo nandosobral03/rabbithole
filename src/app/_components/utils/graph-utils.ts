@@ -1,12 +1,8 @@
 import type { WikipediaLink } from "../types/graph";
 
 export const generateNodeColor = (title: string): string => {
-	let hash = 0;
-	for (let i = 0; i < title.length; i++) {
-		hash = title.charCodeAt(i) + ((hash << 5) - hash);
-	}
-	const hue = Math.abs(hash) % 360;
-	return `hsl(${hue}, 70%, 60%)`;
+	// Return the primary color from CSS variables for all nodes
+	return "oklch(0.7686 0.1647 70.0804)"; // Primary color from globals.css
 };
 
 export const calculateNodeSize = (

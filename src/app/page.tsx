@@ -311,9 +311,9 @@ async function fetchArticleOfTheDay(): Promise<{
 
 export default async function HomePage() {
 	// Fetch all data server-side
-	const [stats, popularArticles, articleOfTheDay] = await Promise.all([
+	const [stats, recentRabbitholes, articleOfTheDay] = await Promise.all([
 		api.rabbithole.getRabbitholeStats(),
-		api.rabbithole.getPopularArticles({ limit: 5 }),
+		api.rabbithole.getRecentRabbitholes({ limit: 3 }),
 		fetchArticleOfTheDay(),
 	]);
 
@@ -461,27 +461,31 @@ export default async function HomePage() {
 
 						{/* Right Sidebar */}
 						<div className="space-y-6 lg:col-span-3">
-							{/* Community Picks */}
-							{popularArticles && popularArticles.length > 0 && (
+							{/* Recent Rabbit Holes */}
+							{recentRabbitholes && recentRabbitholes.length > 0 && (
 								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
 									<div className="mb-3 flex items-center gap-2">
 										<Users className="h-4 w-4 text-chart-3" />
 										<h3 className="font-semibold text-foreground text-sm">
-											Community Picks
+											Recent Rabbit Holes
 										</h3>
 									</div>
 									<div className="space-y-2">
-										{popularArticles.slice(0, 3).map((article) => (
+										{recentRabbitholes.slice(0, 3).map((rabbithole) => (
 											<Link
-												key={article.id}
-												href={`/rabbithole?search=${encodeURIComponent(article.articleTitle)}`}
+												key={rabbithole.id}
+												href={`/${rabbithole.id}`}
 												className="block w-full rounded border border-chart-3/20 bg-chart-3/10 p-3 text-left text-chart-3 transition-colors hover:bg-chart-3/20"
 											>
 												<div className="truncate font-medium text-xs">
-													{article.articleTitle}
+													{rabbithole.title}
 												</div>
 												<div className="mt-1 text-chart-3/80 text-xs">
-													{article.totalAppearances} rabbit holes
+													{rabbithole.nodeCount} articles •{" "}
+													{rabbithole.viewCount} views
+													{rabbithole.creatorName && (
+														<span> • by {rabbithole.creatorName}</span>
+													)}
 												</div>
 											</Link>
 										))}

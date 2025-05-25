@@ -228,6 +228,35 @@ export const rabbitholeRouter = createTRPCRouter({
 			});
 		}),
 
+	// Get recent rabbit holes
+	getRecentRabbitholes: publicProcedure
+		.input(
+			z.object({
+				limit: z.number().min(1).max(100).default(10),
+			}),
+		)
+		.query(async ({ ctx, input }) => {
+			// Clean up expired rabbit holes first
+			await ctx.db
+				.delete(sharedRabbitholes)
+				.where(lt(sharedRabbitholes.expiresAt, new Date()));
+
+			return await ctx.db.query.sharedRabbitholes.findMany({
+				columns: {
+					id: true,
+					title: true,
+					creatorName: true,
+					description: true,
+					createdAt: true,
+					viewCount: true,
+					nodeCount: true,
+					linkCount: true,
+				},
+				orderBy: [desc(sharedRabbitholes.createdAt)],
+				limit: input.limit,
+			});
+		}),
+
 	// Analytics: Get rabbit hole statistics
 	getRabbitholeStats: publicProcedure.query(async ({ ctx }) => {
 		const totalRabbitholes = await ctx.db

@@ -88,8 +88,9 @@ export function WikipediaGraphCanvas({
 				onBackgroundClick={onBackgroundClick}
 				width={typeof window !== "undefined" ? window.innerWidth : 800}
 				height={typeof window !== "undefined" ? window.innerHeight : 600}
-				backgroundColor="#fafafa"
+				backgroundColor="oklch(var(--background))"
 				linkCanvasObjectMode="after"
+				nodeAutoColorBy="color"
 				linkCanvasObject={(
 					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 					link: any,
