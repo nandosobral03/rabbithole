@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
+import { RabbitholeInfoPanel } from "../_components/shared/rabbithole-info-panel";
 import { WikipediaGraphExplorer } from "../_components/wikipedia-graph-explorer";
 
 export default function SharedRabbitholeePage() {
@@ -57,47 +58,23 @@ export default function SharedRabbitholeePage() {
 	}
 
 	return (
-		<div className="flex h-screen flex-col bg-background">
-			{/* Header with rabbit hole info */}
-			<div className="flex items-center justify-between border-border border-b bg-card px-4 py-3">
-				<div className="min-w-0 flex-1">
-					<h1 className="truncate font-semibold text-card-foreground text-lg">
-						{rabbithole.title}
-						{isEdited && (
-							<span className="ml-2 font-normal text-muted-foreground text-sm">
-								(edited)
-							</span>
-						)}
-					</h1>
-					{rabbithole.creatorName && (
-						<p className="truncate text-muted-foreground text-sm">
-							by {rabbithole.creatorName}
-						</p>
-					)}
-					{rabbithole.description && (
-						<p className="mt-1 truncate text-muted-foreground text-sm">
-							{rabbithole.description}
-						</p>
-					)}
-					<div className="mt-1 flex items-center gap-4 text-muted-foreground text-xs">
-						<span>{rabbithole.viewCount} views</span>
-						<span>
-							Created {new Date(rabbithole.createdAt).toLocaleDateString()}
-						</span>
-						<span>
-							Expires {new Date(rabbithole.expiresAt).toLocaleDateString()}
-						</span>
-					</div>
-				</div>
-			</div>
+		<div className="relative h-screen bg-background">
+			{/* Floating Rabbit Hole Info Panel */}
+			<RabbitholeInfoPanel
+				title={rabbithole.title}
+				creatorName={rabbithole.creatorName ?? undefined}
+				description={rabbithole.description ?? undefined}
+				viewCount={rabbithole.viewCount}
+				createdAt={rabbithole.createdAt}
+				expiresAt={rabbithole.expiresAt}
+				isEdited={isEdited}
+			/>
 
-			{/* Graph Explorer with loaded data */}
-			<div className="flex-1">
-				<WikipediaGraphExplorer
-					initialGraphData={rabbithole.graphData}
-					onGraphChange={() => setIsEdited(true)}
-				/>
-			</div>
+			{/* Graph Explorer with loaded data - now takes full screen */}
+			<WikipediaGraphExplorer
+				initialGraphData={rabbithole.graphData}
+				onGraphChange={() => setIsEdited(true)}
+			/>
 		</div>
 	);
 }

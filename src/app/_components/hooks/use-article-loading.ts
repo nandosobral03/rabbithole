@@ -1,83 +1,40 @@
-"use client";
-
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { api } from "~/trpc/react";
-import { WikipediaGraphCanvas } from "./graph/wikipedia-graph-canvas";
-import { useBfsLoading } from "./hooks/use-bfs-loading";
-import { useGraphNavigation } from "./hooks/use-graph-navigation";
-import { useShareRabbithole } from "./hooks/use-share-rabbithole";
-import { ShareModal } from "./modals/share-modal";
-import { WikipediaArticlePanel } from "./panels/wikipedia-article-panel";
-import { GraphControls } from "./shared/graph-controls";
-import { LoadingOverlay } from "./shared/loading-overlay";
-import { ShareSuccessNotification } from "./shared/share-success-notification";
 import type {
 	GraphData,
 	GraphNode,
 	WikipediaFullPageData,
-} from "./types/graph";
-import { calculateNodeSize, generateNodeColor } from "./utils/graph-utils";
-import { wikipediaStyles } from "./wikipedia-article-viewer";
+} from "../types/graph";
+import { calculateNodeSize, generateNodeColor } from "../utils/graph-utils";
 
-interface WikipediaGraphExplorerProps {
-	initialGraphData?: GraphData;
-	initialSearchQuery?: string | null;
+interface UseArticleLoadingProps {
+	graphData: GraphData;
+	setGraphData: (updater: (prevData: GraphData) => GraphData) => void;
+	selectedNode: GraphNode | null;
+	setSelectedNode: (node: GraphNode | null) => void;
+	setNavigationHistory: (updater: (prev: string[]) => string[]) => void;
 	onGraphChange?: () => void;
 }
 
-export function WikipediaGraphExplorer({
-	initialGraphData,
-	initialSearchQuery,
+export function useArticleLoading({
+	graphData,
+	setGraphData,
+	selectedNode,
+	setSelectedNode,
+	setNavigationHistory,
 	onGraphChange,
-}: WikipediaGraphExplorerProps = {}) {
-	const router = useRouter();
-	const [graphData, setGraphData] = useState<GraphData>({
-		nodes: [],
-		links: [],
-	});
-	const [panelWidth, setPanelWidth] = useState(900);
+}: UseArticleLoadingProps) {
 	const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
 
-	// Custom hooks
-	const { isLoadingInitialData, loadInitialGraphDataWithBFS } = useBfsLoading({
-		onGraphDataUpdate: setGraphData,
+	const {
+		mutateAsync: fetchPage,
+		isPending: isFetchingPage,
+		error: fetchPageError,
+	} = api.wikipedia.fetchFullPageWithLinks.useMutation({
+		onError: (error) => {
+			console.error("Error fetching Wikipedia page:", error);
+		},
 	});
-
-	const {
-		selectedNode,
-		isDetailPanelOpen,
-		isCollapsed,
-		navigationHistory,
-		handleNodeClick,
-		handleBackgroundClick,
-		goBackToParent,
-		clearSelection,
-		setSelectedNode,
-		setIsDetailPanelOpen,
-		setIsCollapsed,
-		setNavigationHistory,
-	} = useGraphNavigation();
-
-	const {
-		isSharing,
-		showShareSuccess,
-		showShareModal,
-		shareTitle,
-		shareAuthor,
-		handleShare,
-		handleShareSubmit,
-		closeShareModal,
-		setShareTitle,
-		setShareAuthor,
-	} = useShareRabbithole();
-
-	// Load initial data with BFS animation when component mounts
-	useEffect(() => {
-		if (initialGraphData && initialGraphData.nodes.length > 0) {
-			loadInitialGraphDataWithBFS(initialGraphData);
-		}
-	}, [initialGraphData, loadInitialGraphDataWithBFS]);
 
 	const addNodeToGraph = useCallback(
 		(pageData: WikipediaFullPageData, isRoot = false) => {
@@ -119,18 +76,8 @@ export function WikipediaGraphExplorer({
 				return { nodes: [...prevData.nodes, newNode], links: prevData.links };
 			});
 		},
-		[onGraphChange],
+		[setGraphData, onGraphChange],
 	);
-
-	const {
-		mutateAsync: fetchPage,
-		isPending: isFetchingPage,
-		error: fetchPageError,
-	} = api.wikipedia.fetchFullPageWithLinks.useMutation({
-		onError: (error) => {
-			console.error("Error fetching Wikipedia page:", error);
-		},
-	});
 
 	const handleSearch = useCallback(
 		async (query: string) => {
@@ -138,46 +85,6 @@ export function WikipediaGraphExplorer({
 			addNodeToGraph(pageData, true);
 		},
 		[fetchPage, addNodeToGraph],
-	);
-
-	const handleRestart = useCallback(() => {
-		router.push("/");
-	}, [router]);
-
-	const handleNodeRightClick = useCallback(
-		(node: GraphNode) => {
-			setGraphData((prevData) => {
-				if (prevData.nodes.length <= 1) {
-					return prevData;
-				}
-
-				const updatedNodes = prevData.nodes.filter((n) => n.id !== node.id);
-				const updatedLinks = prevData.links.filter((link) => {
-					const sourceId =
-						typeof link.source === "string"
-							? link.source
-							: (link.source as { id?: string })?.id || link.source;
-					const targetId =
-						typeof link.target === "string"
-							? link.target
-							: (link.target as { id?: string })?.id || link.target;
-					return sourceId !== node.id && targetId !== node.id;
-				});
-
-				onGraphChange?.();
-
-				return {
-					nodes: updatedNodes,
-					links: updatedLinks,
-				};
-			});
-
-			// Close the detail panel if we're removing the currently selected node
-			if (selectedNode?.id === node.id) {
-				clearSelection();
-			}
-		},
-		[selectedNode, onGraphChange, clearSelection],
 	);
 
 	const handleArticleLinkClick = useCallback(
@@ -398,7 +305,16 @@ export function WikipediaGraphExplorer({
 				});
 			}
 		},
-		[selectedNode, fetchPage, graphData.nodes, graphData.links, onGraphChange],
+		[
+			selectedNode,
+			fetchPage,
+			graphData.nodes,
+			graphData.links,
+			onGraphChange,
+			setGraphData,
+			setSelectedNode,
+			setNavigationHistory,
+		],
 	);
 
 	const handleArticleMiddleClick = useCallback(
@@ -590,285 +506,26 @@ export function WikipediaGraphExplorer({
 				});
 			}
 		},
-		[selectedNode, fetchPage, graphData.nodes, graphData.links, onGraphChange],
+		[
+			selectedNode,
+			fetchPage,
+			graphData.nodes,
+			graphData.links,
+			onGraphChange,
+			setGraphData,
+		],
 	);
 
-	const handlePanelResize = useCallback(
-		(e: React.MouseEvent) => {
-			e.preventDefault();
-			const startX = e.clientX;
-			const startWidth = panelWidth;
+	return {
+		// State
+		loadingLinks,
+		isFetchingPage,
+		fetchPageError,
 
-			const handleMouseMove = (e: MouseEvent) => {
-				const deltaX = startX - e.clientX;
-				const newWidth = Math.max(400, Math.min(1000, startWidth + deltaX));
-				setPanelWidth(newWidth);
-			};
-
-			const handleMouseUp = () => {
-				document.removeEventListener("mousemove", handleMouseMove);
-				document.removeEventListener("mouseup", handleMouseUp);
-			};
-
-			document.addEventListener("mousemove", handleMouseMove);
-			document.addEventListener("mouseup", handleMouseUp);
-		},
-		[panelWidth],
-	);
-
-	const removeNodeFromGraph = useCallback(
-		(nodeToRemove: GraphNode) => {
-			if (graphData.nodes.length <= 1) {
-				return;
-			}
-
-			// Check if this is a root node (no incoming connections)
-			const isRootNode = !graphData.links.some((link) => {
-				const targetId =
-					typeof link.target === "string"
-						? link.target
-						: (link.target as { id?: string })?.id || link.target;
-				return targetId === nodeToRemove.id;
-			});
-
-			// Don't allow deletion of root nodes
-			if (isRootNode) {
-				return;
-			}
-
-			setGraphData((prevData) => {
-				// Start with removing the target node
-				let updatedNodes = prevData.nodes.filter(
-					(node) => node.id !== nodeToRemove.id,
-				);
-
-				// Remove all links connected to the target node
-				let updatedLinks = prevData.links.filter((link) => {
-					// Handle both string IDs and object references from D3
-					const sourceId =
-						typeof link.source === "string"
-							? link.source
-							: (link.source as { id?: string })?.id || link.source;
-					const targetId =
-						typeof link.target === "string"
-							? link.target
-							: (link.target as { id?: string })?.id || link.target;
-					return sourceId !== nodeToRemove.id && targetId !== nodeToRemove.id;
-				});
-
-				// Now find and remove orphaned nodes (nodes that can't reach any root)
-				const nodesToRemove = new Set([nodeToRemove.id]);
-				let foundOrphans = true;
-
-				while (foundOrphans) {
-					foundOrphans = false;
-
-					for (const node of updatedNodes) {
-						// Skip if already marked for removal
-						if (nodesToRemove.has(node.id)) continue;
-
-						// Check if this node can reach a root node
-						const canReachRoot = canNodeReachAnyRoot(
-							node.id,
-							updatedLinks,
-							updatedNodes,
-							nodesToRemove,
-						);
-
-						// If it can't reach any root, it's orphaned
-						if (!canReachRoot) {
-							nodesToRemove.add(node.id);
-							foundOrphans = true;
-						}
-					}
-
-					// Remove newly identified orphan nodes and their links
-					updatedNodes = updatedNodes.filter(
-						(node) => !nodesToRemove.has(node.id),
-					);
-					updatedLinks = updatedLinks.filter((link) => {
-						const sourceId =
-							typeof link.source === "string"
-								? link.source
-								: (link.source as { id?: string })?.id || link.source;
-						const targetId =
-							typeof link.target === "string"
-								? link.target
-								: (link.target as { id?: string })?.id || link.target;
-						return !nodesToRemove.has(sourceId) && !nodesToRemove.has(targetId);
-					});
-				}
-
-				// Call onGraphChange when nodes are removed
-				onGraphChange?.();
-
-				return {
-					nodes: updatedNodes,
-					links: updatedLinks,
-				};
-			});
-
-			// Close the detail panel if we're removing the currently selected node
-			if (selectedNode?.id === nodeToRemove.id) {
-				setSelectedNode(null);
-				setIsDetailPanelOpen(false);
-			}
-		},
-		[selectedNode, graphData.nodes, graphData.links, onGraphChange],
-	);
-
-	// Helper function to check if a node can reach any root node
-	const canNodeReachAnyRoot = useCallback(
-		(
-			nodeId: string,
-			links: GraphData["links"],
-			nodes: GraphData["nodes"],
-			excludeNodes: Set<string>,
-		): boolean => {
-			// Find all root nodes (nodes with no incoming connections)
-			const rootNodes = nodes.filter((node) => {
-				if (excludeNodes.has(node.id)) return false;
-
-				const hasIncomingLinks = links.some((link) => {
-					const targetId =
-						typeof link.target === "string"
-							? link.target
-							: (link.target as { id?: string })?.id || link.target;
-					const sourceId =
-						typeof link.source === "string"
-							? link.source
-							: (link.source as { id?: string })?.id || link.source;
-
-					return targetId === node.id && !excludeNodes.has(sourceId);
-				});
-
-				return !hasIncomingLinks;
-			});
-
-			// If this node is itself a root, it can reach a root
-			if (rootNodes.some((root) => root.id === nodeId)) {
-				return true;
-			}
-
-			// Use BFS to see if we can reach any root node by following incoming links
-			const visited = new Set<string>();
-			const queue = [nodeId];
-			visited.add(nodeId);
-
-			while (queue.length > 0) {
-				const currentNodeId = queue.shift();
-				if (!currentNodeId) continue;
-
-				// Find all nodes that point to the current node (incoming links)
-				const incomingNodes = links
-					.filter((link) => {
-						const targetId =
-							typeof link.target === "string"
-								? link.target
-								: (link.target as { id?: string })?.id || link.target;
-						const sourceId =
-							typeof link.source === "string"
-								? link.source
-								: (link.source as { id?: string })?.id || link.source;
-
-						return targetId === currentNodeId && !excludeNodes.has(sourceId);
-					})
-					.map((link) => {
-						const sourceId =
-							typeof link.source === "string"
-								? link.source
-								: (link.source as { id?: string })?.id || link.source;
-						return sourceId;
-					});
-
-				for (const incomingNodeId of incomingNodes) {
-					// If we reached a root node, we can reach a root
-					if (rootNodes.some((root) => root.id === incomingNodeId)) {
-						return true;
-					}
-
-					// Add to queue if not visited
-					if (!visited.has(incomingNodeId)) {
-						visited.add(incomingNodeId);
-						queue.push(incomingNodeId);
-					}
-				}
-			}
-
-			return false;
-		},
-		[],
-	);
-
-	useEffect(() => {
-		if (initialSearchQuery) {
-			handleSearch(initialSearchQuery);
-		}
-	}, [initialSearchQuery, handleSearch]);
-
-	return (
-		<div className="relative flex h-screen overflow-hidden bg-background">
-			<style>{wikipediaStyles}</style>
-
-			{/* Loading Overlay */}
-			<LoadingOverlay
-				isVisible={isLoadingInitialData}
-				title="Loading rabbit hole..."
-				nodeCount={graphData.nodes.length}
-			/>
-
-			{/* Graph Controls */}
-			<GraphControls
-				nodeCount={graphData.nodes.length}
-				linkCount={graphData.links.length}
-				isLoading={isLoadingInitialData}
-				isSharing={isSharing}
-				onShare={() => handleShare(graphData)}
-				onRestart={handleRestart}
-			/>
-
-			{/* Share Success Notification */}
-			<ShareSuccessNotification isVisible={showShareSuccess} />
-
-			{/* Share Modal */}
-			<ShareModal
-				isOpen={showShareModal}
-				onClose={closeShareModal}
-				shareTitle={shareTitle}
-				setShareTitle={setShareTitle}
-				shareAuthor={shareAuthor}
-				setShareAuthor={setShareAuthor}
-				onSubmit={() => handleShareSubmit(graphData)}
-				isSharing={isSharing}
-			/>
-
-			{/* Graph Canvas Component */}
-			<WikipediaGraphCanvas
-				graphData={graphData}
-				onNodeClick={handleNodeClick}
-				onBackgroundClick={handleBackgroundClick}
-				onNodeRightClick={handleNodeRightClick}
-			/>
-
-			{/* Article Panel Component */}
-			{selectedNode && (
-				<WikipediaArticlePanel
-					selectedNode={selectedNode}
-					isDetailPanelOpen={isDetailPanelOpen}
-					setIsDetailPanelOpen={setIsDetailPanelOpen}
-					panelWidth={panelWidth}
-					isCollapsed={isCollapsed}
-					setIsCollapsed={setIsCollapsed}
-					navigationHistory={navigationHistory}
-					graphData={graphData}
-					loadingLinks={loadingLinks}
-					onLinkClick={handleArticleLinkClick}
-					onMiddleClick={handleArticleMiddleClick}
-					onRemoveNode={removeNodeFromGraph}
-					onGoBackToParent={() => goBackToParent(graphData)}
-					onPanelResize={handlePanelResize}
-				/>
-			)}
-		</div>
-	);
+		// Actions
+		handleSearch,
+		handleArticleLinkClick,
+		handleArticleMiddleClick,
+		addNodeToGraph,
+	};
 }
