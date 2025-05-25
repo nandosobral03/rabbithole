@@ -33,7 +33,7 @@ export function WikipediaGraphExplorer({
 	);
 	const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 	const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
-	const [panelWidth, setPanelWidth] = useState(700);
+	const [panelWidth, setPanelWidth] = useState(900);
 	const [isCollapsed, setIsCollapsed] = useState(false);
 	const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
 	const [navigationHistory, setNavigationHistory] = useState<string[]>([]);
@@ -178,6 +178,47 @@ export function WikipediaGraphExplorer({
 		setIsDetailPanelOpen(false);
 	}, []);
 
+	const handleNodeRightClick = useCallback(
+		(node: GraphNode) => {
+			setGraphData((prevData) => {
+				// Don't delete if it's the last node
+				if (prevData.nodes.length <= 1) {
+					console.log("Cannot delete the last node in the graph");
+					return prevData;
+				}
+
+				// This is a simplified version that just removes the node and its links
+				// The full cascading logic will be handled by the actual removeNodeFromGraph function
+				const updatedNodes = prevData.nodes.filter((n) => n.id !== node.id);
+				const updatedLinks = prevData.links.filter((link) => {
+					const sourceId =
+						typeof link.source === "string"
+							? link.source
+							: (link.source as { id?: string })?.id || link.source;
+					const targetId =
+						typeof link.target === "string"
+							? link.target
+							: (link.target as { id?: string })?.id || link.target;
+					return sourceId !== node.id && targetId !== node.id;
+				});
+
+				console.log(`Right-click removed node: ${node.title}`);
+
+				return {
+					nodes: updatedNodes,
+					links: updatedLinks,
+				};
+			});
+
+			// Close the detail panel if we're removing the currently selected node
+			if (selectedNode?.id === node.id) {
+				setSelectedNode(null);
+				setIsDetailPanelOpen(false);
+			}
+		},
+		[selectedNode],
+	);
+
 	const goBackToParent = useCallback(() => {
 		if (navigationHistory.length === 0) return;
 
@@ -199,10 +240,14 @@ export function WikipediaGraphExplorer({
 			setLoadingLinks((prev) => new Set(prev).add(title));
 
 			try {
+				// Create lookup maps for faster searches
+				const nodeMap = new Map(graphData.nodes.map((node) => [node.id, node]));
+				const linkMap = new Map(graphData.links.map((link) => [link.id, link]));
+
 				// Check if we already have this article in the graph (quick check first)
-				const existingNode = graphData.nodes.find((n) => n.id === title);
+				const existingNode = nodeMap.get(title);
 				const linkId = `${selectedNode.id}->${title}`;
-				const existingLink = graphData.links.find((l) => l.id === linkId);
+				const existingLink = linkMap.get(linkId);
 
 				// If the node and link already exist, just switch to that node (no API call needed)
 				if (existingNode && existingLink) {
@@ -256,13 +301,9 @@ export function WikipediaGraphExplorer({
 				const actualTitle = pageData.title;
 
 				// Check again with the actual title returned by Wikipedia
-				const existingNodeByActualTitle = graphData.nodes.find(
-					(n) => n.id === actualTitle,
-				);
+				const existingNodeByActualTitle = nodeMap.get(actualTitle);
 				const actualLinkId = `${selectedNode.id}->${actualTitle}`;
-				const existingLinkByActualTitle = graphData.links.find(
-					(l) => l.id === actualLinkId,
-				);
+				const existingLinkByActualTitle = linkMap.get(actualLinkId);
 
 				// If the node and link already exist with actual title, just switch
 				if (existingNodeByActualTitle && existingLinkByActualTitle) {
@@ -324,17 +365,69 @@ export function WikipediaGraphExplorer({
 					color: generateNodeColor(actualTitle),
 				};
 
-				setGraphData((prevData) => ({
-					nodes: [...prevData.nodes, newNode],
-					links: [
+				// Batch all graph updates in a single state update
+				setGraphData((prevData) => {
+					const updatedNodes = [...prevData.nodes, newNode];
+					const updatedLinks = [
 						...prevData.links,
 						{
 							source: selectedNode.id,
 							target: actualTitle,
 							id: actualLinkId,
 						},
-					],
-				}));
+					];
+
+					// Optimized automatic edge creation using lookup maps
+					const existingNodeTitles = new Set(
+						prevData.nodes.map((node) => node.title),
+					);
+					const newNodeLinkTitles = new Set(
+						pageData.links.map((link) => link.title.replace(/_/g, " ")),
+					);
+
+					// Check bidirectional connections more efficiently
+					for (const existingNode of prevData.nodes) {
+						// Check if new node links to existing node
+						if (newNodeLinkTitles.has(existingNode.title)) {
+							const linkId = `${actualTitle}->${existingNode.id}`;
+							// Only add if this link doesn't already exist
+							if (!updatedLinks.some((l) => l.id === linkId)) {
+								updatedLinks.push({
+									source: actualTitle,
+									target: existingNode.id,
+									id: linkId,
+								});
+							}
+						}
+
+						// Check if existing node links to new node (using cached outgoingLinks)
+						if (existingNode.outgoingLinks) {
+							const existingNodeLinksToNew = existingNode.outgoingLinks.some(
+								(link) => {
+									const linkTitle = link.title.replace(/_/g, " ");
+									return linkTitle === actualTitle;
+								},
+							);
+
+							if (existingNodeLinksToNew) {
+								const linkId = `${existingNode.id}->${actualTitle}`;
+								// Only add if this link doesn't already exist
+								if (!updatedLinks.some((l) => l.id === linkId)) {
+									updatedLinks.push({
+										source: existingNode.id,
+										target: actualTitle,
+										id: linkId,
+									});
+								}
+							}
+						}
+					}
+
+					return {
+						nodes: updatedNodes,
+						links: updatedLinks,
+					};
+				});
 
 				// Switch to the new node in the detail panel
 				setSelectedNode(newNode);
@@ -354,7 +447,7 @@ export function WikipediaGraphExplorer({
 				});
 			}
 		},
-		[selectedNode, graphData.nodes, graphData.links, fetchPage],
+		[selectedNode, fetchPage, graphData.nodes, graphData.links],
 	);
 
 	const handleArticleMiddleClick = useCallback(
@@ -365,10 +458,14 @@ export function WikipediaGraphExplorer({
 			setLoadingLinks((prev) => new Set(prev).add(title));
 
 			try {
+				// Create lookup maps for faster searches
+				const nodeMap = new Map(graphData.nodes.map((node) => [node.id, node]));
+				const linkMap = new Map(graphData.links.map((link) => [link.id, link]));
+
 				// Check if we already have this article in the graph (quick check first)
-				const existingNode = graphData.nodes.find((n) => n.id === title);
+				const existingNode = nodeMap.get(title);
 				const linkId = `${selectedNode.id}->${title}`;
-				const existingLink = graphData.links.find((l) => l.id === linkId);
+				const existingLink = linkMap.get(linkId);
 
 				// If the node and link already exist, don't switch view but just log
 				if (existingNode && existingLink) {
@@ -409,13 +506,9 @@ export function WikipediaGraphExplorer({
 				const actualTitle = pageData.title;
 
 				// Check again with the actual title returned by Wikipedia
-				const existingNodeByActualTitle = graphData.nodes.find(
-					(n) => n.id === actualTitle,
-				);
+				const existingNodeByActualTitle = nodeMap.get(actualTitle);
 				const actualLinkId = `${selectedNode.id}->${actualTitle}`;
-				const existingLinkByActualTitle = graphData.links.find(
-					(l) => l.id === actualLinkId,
-				);
+				const existingLinkByActualTitle = linkMap.get(actualLinkId);
 
 				// If the node and link already exist with actual title, don't switch
 				if (existingNodeByActualTitle && existingLinkByActualTitle) {
@@ -464,17 +557,69 @@ export function WikipediaGraphExplorer({
 					color: generateNodeColor(actualTitle),
 				};
 
-				setGraphData((prevData) => ({
-					nodes: [...prevData.nodes, newNode],
-					links: [
+				// Batch all graph updates in a single state update
+				setGraphData((prevData) => {
+					const updatedNodes = [...prevData.nodes, newNode];
+					const updatedLinks = [
 						...prevData.links,
 						{
 							source: selectedNode.id,
 							target: actualTitle,
 							id: actualLinkId,
 						},
-					],
-				}));
+					];
+
+					// Optimized automatic edge creation using lookup maps
+					const existingNodeTitles = new Set(
+						prevData.nodes.map((node) => node.title),
+					);
+					const newNodeLinkTitles = new Set(
+						pageData.links.map((link) => link.title.replace(/_/g, " ")),
+					);
+
+					// Check bidirectional connections more efficiently
+					for (const existingNode of prevData.nodes) {
+						// Check if new node links to existing node
+						if (newNodeLinkTitles.has(existingNode.title)) {
+							const linkId = `${actualTitle}->${existingNode.id}`;
+							// Only add if this link doesn't already exist
+							if (!updatedLinks.some((l) => l.id === linkId)) {
+								updatedLinks.push({
+									source: actualTitle,
+									target: existingNode.id,
+									id: linkId,
+								});
+							}
+						}
+
+						// Check if existing node links to new node (using cached outgoingLinks)
+						if (existingNode.outgoingLinks) {
+							const existingNodeLinksToNew = existingNode.outgoingLinks.some(
+								(link) => {
+									const linkTitle = link.title.replace(/_/g, " ");
+									return linkTitle === actualTitle;
+								},
+							);
+
+							if (existingNodeLinksToNew) {
+								const linkId = `${existingNode.id}->${actualTitle}`;
+								// Only add if this link doesn't already exist
+								if (!updatedLinks.some((l) => l.id === linkId)) {
+									updatedLinks.push({
+										source: existingNode.id,
+										target: actualTitle,
+										id: linkId,
+									});
+								}
+							}
+						}
+					}
+
+					return {
+						nodes: updatedNodes,
+						links: updatedLinks,
+					};
+				});
 
 				// Don't switch to the new node - keep current selection
 			} catch (error) {
@@ -491,7 +636,7 @@ export function WikipediaGraphExplorer({
 				});
 			}
 		},
-		[selectedNode, graphData.nodes, graphData.links, fetchPage],
+		[selectedNode, fetchPage, graphData.nodes, graphData.links],
 	);
 
 	const handlePanelResize = useCallback(
@@ -519,12 +664,35 @@ export function WikipediaGraphExplorer({
 
 	const removeNodeFromGraph = useCallback(
 		(nodeToRemove: GraphNode) => {
+			// Don't delete if it's the last node
+			if (graphData.nodes.length <= 1) {
+				console.log("Cannot delete the last node in the graph");
+				return;
+			}
+
+			// Check if this is a root node (no incoming connections)
+			const isRootNode = !graphData.links.some((link) => {
+				const targetId =
+					typeof link.target === "string"
+						? link.target
+						: (link.target as { id?: string })?.id || link.target;
+				return targetId === nodeToRemove.id;
+			});
+
+			// Don't allow deletion of root nodes
+			if (isRootNode) {
+				console.log("Cannot delete root node:", nodeToRemove.title);
+				return;
+			}
+
 			setGraphData((prevData) => {
-				// First, remove the target node and all links connected to it
-				const updatedNodes = prevData.nodes.filter(
+				// Start with removing the target node
+				let updatedNodes = prevData.nodes.filter(
 					(node) => node.id !== nodeToRemove.id,
 				);
-				const updatedLinks = prevData.links.filter((link) => {
+
+				// Remove all links connected to the target node
+				let updatedLinks = prevData.links.filter((link) => {
 					// Handle both string IDs and object references from D3
 					const sourceId =
 						typeof link.source === "string"
@@ -537,7 +705,7 @@ export function WikipediaGraphExplorer({
 					return sourceId !== nodeToRemove.id && targetId !== nodeToRemove.id;
 				});
 
-				// Now find and remove orphan nodes (nodes that have no incoming links)
+				// Now find and remove orphaned nodes (nodes that can't reach any root)
 				const nodesToRemove = new Set([nodeToRemove.id]);
 				let foundOrphans = true;
 
@@ -548,53 +716,46 @@ export function WikipediaGraphExplorer({
 						// Skip if already marked for removal
 						if (nodesToRemove.has(node.id)) continue;
 
-						// Check if this node has any incoming links from nodes that aren't being removed
-						const hasIncomingLinks = updatedLinks.some((link) => {
-							const sourceId =
-								typeof link.source === "string"
-									? link.source
-									: (link.source as { id?: string })?.id || link.source;
-							const targetId =
-								typeof link.target === "string"
-									? link.target
-									: (link.target as { id?: string })?.id || link.target;
+						// Check if this node can reach a root node
+						const canReachRoot = canNodeReachAnyRoot(
+							node.id,
+							updatedLinks,
+							updatedNodes,
+							nodesToRemove,
+						);
 
-							// This node is a target and the source is not being removed
-							return targetId === node.id && !nodesToRemove.has(sourceId);
-						});
-
-						// If no incoming links, it's an orphan
-						if (!hasIncomingLinks) {
+						// If it can't reach any root, it's orphaned
+						if (!canReachRoot) {
 							nodesToRemove.add(node.id);
 							foundOrphans = true;
 						}
 					}
+
+					// Remove newly identified orphan nodes and their links
+					updatedNodes = updatedNodes.filter(
+						(node) => !nodesToRemove.has(node.id),
+					);
+					updatedLinks = updatedLinks.filter((link) => {
+						const sourceId =
+							typeof link.source === "string"
+								? link.source
+								: (link.source as { id?: string })?.id || link.source;
+						const targetId =
+							typeof link.target === "string"
+								? link.target
+								: (link.target as { id?: string })?.id || link.target;
+						return !nodesToRemove.has(sourceId) && !nodesToRemove.has(targetId);
+					});
 				}
 
-				// Remove all orphan nodes and their links
-				const finalNodes = updatedNodes.filter(
-					(node) => !nodesToRemove.has(node.id),
-				);
-				const finalLinks = updatedLinks.filter((link) => {
-					const sourceId =
-						typeof link.source === "string"
-							? link.source
-							: (link.source as { id?: string })?.id || link.source;
-					const targetId =
-						typeof link.target === "string"
-							? link.target
-							: (link.target as { id?: string })?.id || link.target;
-					return !nodesToRemove.has(sourceId) && !nodesToRemove.has(targetId);
-				});
-
 				console.log(
-					`Removed ${nodesToRemove.size} nodes (including orphans):`,
+					`Removed ${nodesToRemove.size} nodes (including orphaned children):`,
 					Array.from(nodesToRemove),
 				);
 
 				return {
-					nodes: finalNodes,
-					links: finalLinks,
+					nodes: updatedNodes,
+					links: updatedLinks,
 				};
 			});
 
@@ -604,7 +765,90 @@ export function WikipediaGraphExplorer({
 				setIsDetailPanelOpen(false);
 			}
 		},
-		[selectedNode],
+		[selectedNode, graphData.nodes, graphData.links],
+	);
+
+	// Helper function to check if a node can reach any root node
+	const canNodeReachAnyRoot = useCallback(
+		(
+			nodeId: string,
+			links: GraphData["links"],
+			nodes: GraphData["nodes"],
+			excludeNodes: Set<string>,
+		): boolean => {
+			// Find all root nodes (nodes with no incoming connections)
+			const rootNodes = nodes.filter((node) => {
+				if (excludeNodes.has(node.id)) return false;
+
+				const hasIncomingLinks = links.some((link) => {
+					const targetId =
+						typeof link.target === "string"
+							? link.target
+							: (link.target as { id?: string })?.id || link.target;
+					const sourceId =
+						typeof link.source === "string"
+							? link.source
+							: (link.source as { id?: string })?.id || link.source;
+
+					return targetId === node.id && !excludeNodes.has(sourceId);
+				});
+
+				return !hasIncomingLinks;
+			});
+
+			// If this node is itself a root, it can reach a root
+			if (rootNodes.some((root) => root.id === nodeId)) {
+				return true;
+			}
+
+			// Use BFS to see if we can reach any root node by following incoming links
+			const visited = new Set<string>();
+			const queue = [nodeId];
+			visited.add(nodeId);
+
+			while (queue.length > 0) {
+				const currentNodeId = queue.shift();
+				if (!currentNodeId) continue;
+
+				// Find all nodes that point to the current node (incoming links)
+				const incomingNodes = links
+					.filter((link) => {
+						const targetId =
+							typeof link.target === "string"
+								? link.target
+								: (link.target as { id?: string })?.id || link.target;
+						const sourceId =
+							typeof link.source === "string"
+								? link.source
+								: (link.source as { id?: string })?.id || link.source;
+
+						return targetId === currentNodeId && !excludeNodes.has(sourceId);
+					})
+					.map((link) => {
+						const sourceId =
+							typeof link.source === "string"
+								? link.source
+								: (link.source as { id?: string })?.id || link.source;
+						return sourceId;
+					});
+
+				for (const incomingNodeId of incomingNodes) {
+					// If we reached a root node, we can reach a root
+					if (rootNodes.some((root) => root.id === incomingNodeId)) {
+						return true;
+					}
+
+					// Add to queue if not visited
+					if (!visited.has(incomingNodeId)) {
+						visited.add(incomingNodeId);
+						queue.push(incomingNodeId);
+					}
+				}
+			}
+
+			return false;
+		},
+		[],
 	);
 
 	useEffect(() => {
@@ -614,7 +858,7 @@ export function WikipediaGraphExplorer({
 	}, [initialSearchQuery, handleSearch]);
 
 	return (
-		<div className="relative flex h-screen bg-background">
+		<div className="relative flex h-screen bg-background overflow-hidden">
 			<style>{wikipediaStyles}</style>
 
 			{graphData.nodes.length > 0 && (
@@ -658,6 +902,7 @@ export function WikipediaGraphExplorer({
 				graphData={graphData}
 				onNodeClick={handleNodeClick}
 				onBackgroundClick={handleBackgroundClick}
+				onNodeRightClick={handleNodeRightClick}
 			/>
 
 			{/* Article Panel Component */}

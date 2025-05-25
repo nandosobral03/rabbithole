@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { GraphData, GraphNode } from "../types/graph";
 
 // Dynamically import ForceGraph2D to avoid SSR issues
@@ -13,15 +13,29 @@ interface WikipediaGraphCanvasProps {
 	graphData: GraphData;
 	onNodeClick: (node: GraphNode) => void;
 	onBackgroundClick: () => void;
+	onNodeRightClick?: (node: GraphNode) => void;
 }
 
 export function WikipediaGraphCanvas({
 	graphData,
 	onNodeClick,
 	onBackgroundClick,
+	onNodeRightClick,
 }: WikipediaGraphCanvasProps) {
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const graphRef = useRef<any>(null);
+
+	// Wrapper for right-click handler to match ForceGraph2D's expected signature
+	const handleNodeRightClick = useCallback(
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		(node: any, event: MouseEvent) => {
+			if (onNodeRightClick) {
+				event.preventDefault(); // Prevent context menu
+				onNodeRightClick(node as GraphNode);
+			}
+		},
+		[onNodeRightClick],
+	);
 
 	// Configure d3 forces for better node separation
 	useEffect(() => {
@@ -47,7 +61,7 @@ export function WikipediaGraphCanvas({
 	}, [graphData.nodes.length]);
 
 	return (
-		<div className="relative flex-1">
+		<div className="relative flex-1 overflow-hidden">
 			<ForceGraph2D
 				ref={graphRef}
 				graphData={graphData}
@@ -64,6 +78,7 @@ export function WikipediaGraphCanvas({
 				linkDirectionalParticleSpeed={0.006}
 				// @ts-expect-error - Works still I swear
 				onNodeClick={onNodeClick}
+				onNodeRightClick={handleNodeRightClick}
 				onBackgroundClick={onBackgroundClick}
 				width={typeof window !== "undefined" ? window.innerWidth : 800}
 				height={typeof window !== "undefined" ? window.innerHeight : 600}

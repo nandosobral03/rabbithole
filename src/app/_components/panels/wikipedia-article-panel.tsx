@@ -8,7 +8,7 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Button } from "~/components/ui/button";
 import type { GraphData, GraphNode } from "../types/graph";
 import { WikipediaArticleViewer } from "../wikipedia-article-viewer";
@@ -50,6 +50,32 @@ export function WikipediaArticlePanel({
 		setIsCollapsed(!isCollapsed);
 	}, [isCollapsed, setIsCollapsed]);
 
+	// Scroll to top when selectedNode changes
+	useEffect(() => {
+		if (selectedNode && isDetailPanelOpen && !isCollapsed) {
+			// Use a small delay to ensure the content is rendered
+			setTimeout(() => {
+				const contentContainer = document.querySelector(
+					".wikipedia-article-panel-content",
+				);
+				if (contentContainer) {
+					contentContainer.scrollTop = 0;
+				}
+			}, 100);
+		}
+	}, [selectedNode, isDetailPanelOpen, isCollapsed]);
+
+	// Check if the selected node is a root node (no incoming connections)
+	const isRootNode =
+		selectedNode &&
+		!graphData.links.some((link) => {
+			const targetId =
+				typeof link.target === "string"
+					? link.target
+					: (link.target as { id?: string })?.id || link.target;
+			return targetId === selectedNode.id;
+		});
+
 	if (!isDetailPanelOpen || !selectedNode) {
 		return null;
 	}
@@ -62,6 +88,18 @@ export function WikipediaArticlePanel({
 				transform: isDetailPanelOpen ? "translateX(0)" : "translateX(100%)",
 			}}
 		>
+			{/* Loading Overlay - positioned relative to the panel */}
+			{loadingLinks.size > 0 && !isCollapsed && (
+				<div className="absolute inset-0 bg-background/90 backdrop-blur-sm z-30 flex items-center justify-center">
+					<div className="flex flex-col items-center gap-3 text-center p-8">
+						<div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+						<div className="text-sm text-muted-foreground font-medium">
+							Loading article...
+						</div>
+					</div>
+				</div>
+			)}
+
 			{/* Resize Handle */}
 			{!isCollapsed && (
 				<div
@@ -125,7 +163,7 @@ export function WikipediaArticlePanel({
 									size="sm"
 									onClick={() => onRemoveNode(selectedNode)}
 									className="flex items-center gap-2 text-destructive hover:border-destructive/30 hover:text-destructive"
-									title="Remove this article and its orphaned connections"
+									title="Remove this article and any orphaned children"
 								>
 									<Trash2 className="h-4 w-4" />
 									Remove
@@ -146,7 +184,7 @@ export function WikipediaArticlePanel({
 					</div>
 
 					{/* Content */}
-					<div className="flex-1 overflow-y-auto p-6">
+					<div className="flex-1 overflow-y-auto p-6 wikipedia-article-panel-content">
 						<div className="space-y-4">
 							{/* External Link */}
 							<a
@@ -160,13 +198,15 @@ export function WikipediaArticlePanel({
 							</a>
 
 							{/* Article Content */}
-							<WikipediaArticleViewer
-								htmlContent={selectedNode.fullHtml}
-								title={selectedNode.title}
-								loadingLinks={loadingLinks}
-								onLinkClick={onLinkClick}
-								onMiddleClick={onMiddleClick}
-							/>
+							<div>
+								<WikipediaArticleViewer
+									htmlContent={selectedNode.fullHtml}
+									title={selectedNode.title}
+									loadingLinks={loadingLinks}
+									onLinkClick={onLinkClick}
+									onMiddleClick={onMiddleClick}
+								/>
+							</div>
 						</div>
 					</div>
 				</>

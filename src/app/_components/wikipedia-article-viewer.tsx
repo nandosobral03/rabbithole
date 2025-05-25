@@ -225,130 +225,32 @@ export function WikipediaArticleViewer({
 		handleMouseDown,
 	]);
 
-	// Optimized link styling - batch process links and prioritize visible ones
+	// Simple loading state for individual links
 	useEffect(() => {
+		if (!sanitizedHtml || !loadingLinks || loadingLinks.size === 0) return;
+
 		const container = document.getElementById(containerId);
-		if (!container || !sanitizedHtml) return;
+		if (!container) return;
 
-		const links = Array.from(
-			container.querySelectorAll("a[href]"),
-		) as HTMLAnchorElement[];
-		const hasLoadingLinks = loadingLinks && loadingLinks.size > 0;
+		const links = container.querySelectorAll(
+			"a[href]",
+		) as NodeListOf<HTMLAnchorElement>;
 
-		// Process links in batches to avoid blocking the main thread
-		const BATCH_SIZE = 50;
-		let currentBatch = 0;
-		const totalBatches = Math.ceil(links.length / BATCH_SIZE);
+		for (const link of links) {
+			const href = link.getAttribute("href");
+			if (!href || !isWikipediaLink(href)) continue;
 
-		// Create an intersection observer to prioritize visible links (if supported)
-		const visibleLinks = new Set<HTMLAnchorElement>();
-		let observer: IntersectionObserver | null = null;
-
-		if (typeof IntersectionObserver !== "undefined") {
-			observer = new IntersectionObserver(
-				(entries) => {
-					for (const entry of entries) {
-						if (entry.isIntersecting) {
-							visibleLinks.add(entry.target as HTMLAnchorElement);
-						} else {
-							visibleLinks.delete(entry.target as HTMLAnchorElement);
-						}
-					}
-				},
-				{
-					root: container,
-					rootMargin: "100px", // Process links slightly before they come into view
-					threshold: 0,
-				},
-			);
-
-			// Start observing all links
-			for (const link of links) {
-				observer.observe(link);
-			}
-
-			// Give the observer a moment to detect visible links, then start processing
-			setTimeout(() => {
-				processBatches();
-			}, 10);
-		} else {
-			// No intersection observer support, start immediately
-			processBatches();
-		}
-
-		const processLinkBatch = (batchIndex: number) => {
-			const startIndex = batchIndex * BATCH_SIZE;
-			const endIndex = Math.min(startIndex + BATCH_SIZE, links.length);
-			const batchLinks = links.slice(startIndex, endIndex);
-
-			// Process visible links first if we have intersection observer, otherwise process in order
-			let orderedBatchLinks = batchLinks;
-			if (observer && visibleLinks.size > 0) {
-				const visibleBatchLinks = batchLinks.filter((link) =>
-					visibleLinks.has(link),
-				);
-				const nonVisibleBatchLinks = batchLinks.filter(
-					(link) => !visibleLinks.has(link),
-				);
-				orderedBatchLinks = [...visibleBatchLinks, ...nonVisibleBatchLinks];
-			}
-
-			for (const link of orderedBatchLinks) {
-				const href = link.getAttribute("href");
-				if (!href) continue;
-
-				if (isWikipediaLink(href)) {
-					link.classList.add("wikipedia-link");
-					link.classList.remove("external-link");
-
-					// Only process loading states if there are loading links
-					if (hasLoadingLinks) {
-						const articleTitle = extractArticleTitle(href);
-						link.classList.remove("loading-link", "disabled-link");
-
-						if (articleTitle && loadingLinks.has(articleTitle)) {
-							link.classList.add("loading-link");
-						} else {
-							link.classList.add("disabled-link");
-						}
-					} else {
-						link.classList.remove("loading-link", "disabled-link");
-					}
-				} else {
-					// External link
-					link.classList.add("external-link");
-					link.classList.remove(
-						"wikipedia-link",
-						"loading-link",
-						"disabled-link",
-					);
-					link.setAttribute("target", "_blank");
-					link.setAttribute("rel", "noopener noreferrer");
-				}
-			}
-		};
-
-		function processBatches() {
-			if (currentBatch < totalBatches) {
-				// Use requestAnimationFrame to avoid blocking the main thread
-				requestAnimationFrame(() => {
-					processLinkBatch(currentBatch);
-					currentBatch++;
-
-					// Schedule next batch with a small delay to keep UI responsive
-					if (currentBatch < totalBatches) {
-						setTimeout(processBatches, 0);
-					}
-				});
+			const articleTitle = extractArticleTitle(href);
+			if (articleTitle && loadingLinks.has(articleTitle)) {
+				link.style.opacity = "0.6";
+				link.style.pointerEvents = "none";
+				link.style.cursor = "wait";
+			} else {
+				link.style.opacity = "";
+				link.style.pointerEvents = "";
+				link.style.cursor = "";
 			}
 		}
-
-		// Cleanup function
-		return () => {
-			if (observer) {
-				observer.disconnect();
-			}
-		};
 	}, [loadingLinks, containerId, sanitizedHtml]);
 
 	if (!sanitizedHtml) {
@@ -394,80 +296,40 @@ export const wikipediaStyles = `
     line-height: 1.6;
   }
 
-  /* Base link styling */
+  /* Simple link styling - all links get the same treatment */
   .wikipedia-article-content a {
+    color: rgb(37 99 235);
     text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: all 0.2s ease;
   }
 
   .wikipedia-article-content a:hover {
+    color: rgb(29 78 216);
     text-decoration: underline;
+    border-bottom-color: rgb(29 78 216);
   }
 
-  /* Wikipedia links - green color with high specificity */
-  .wikipedia-article-content a.wikipedia-link,
-  .wikipedia-article-content a.wikipedia-link:link,
-  .wikipedia-article-content a.wikipedia-link:visited {
-    color: oklch(0.7686 0.1647 70.0804) !important;
-  }
-
-  .wikipedia-article-content a.wikipedia-link:hover {
-    color: oklch(0.7686 0.1647 70.0804) !important;
-    border-bottom-color: oklch(0.7686 0.1647 70.0804) !important;
-  }
-
-  /* External links - normal blue color with external icon and high specificity */
-  .wikipedia-article-content a.external-link,
-  .wikipedia-article-content a.external-link:link,
-  .wikipedia-article-content a.external-link:visited {
-    color: rgb(37 99 235) !important;
-  }
-
-  .wikipedia-article-content a.external-link:hover {
-    color: rgb(29 78 216) !important;
-    border-bottom-color: rgb(29 78 216) !important;
-  }
-
-  .wikipedia-article-content a.external-link::after {
+  /* External links get a small icon */
+  .wikipedia-article-content a[href^="http"]:not([href*="wikipedia.org"])::after,
+  .wikipedia-article-content a[href^="https"]:not([href*="wikipedia.org"])::after {
     content: "↗";
     font-size: 0.75em;
     margin-left: 0.25em;
     opacity: 0.7;
   }
 
-  /* Default link styling for links that haven't been classified yet */
-  .wikipedia-article-content a:not(.wikipedia-link):not(.external-link) {
-    color: rgb(37 99 235);
-  }
-
-  .wikipedia-article-content a:not(.wikipedia-link):not(.external-link):hover {
-    color: rgb(29 78 216);
-    border-bottom-color: rgb(29 78 216);
-  }
-
-  /* Loading and disabled states for Wikipedia links */
-  .wikipedia-article-content a.loading-link {
-    color: rgb(59 130 246) !important;
+  /* Loading state for links */
+  .wikipedia-article-content a[style*="cursor: wait"] {
     animation: pulse 1.5s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  .wikipedia-article-content a.disabled-link {
-    color: rgb(156 163 175) !important;
-    cursor: not-allowed !important;
-    pointer-events: none;
-    opacity: 0.5;
   }
 
   @keyframes pulse {
     0%, 100% {
-      opacity: 1;
-      transform: scale(1);
+      opacity: 0.6;
     }
     50% {
-      opacity: 0.6;
-      transform: scale(1.02);
+      opacity: 0.3;
     }
   }
 
