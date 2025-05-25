@@ -64,7 +64,7 @@ export default function SharedRabbitholeePage() {
 					<h1 className="truncate font-semibold text-card-foreground text-lg">
 						{rabbithole.title}
 						{isEdited && (
-							<span className="ml-2 text-muted-foreground text-sm font-normal">
+							<span className="ml-2 font-normal text-muted-foreground text-sm">
 								(edited)
 							</span>
 						)}
@@ -75,7 +75,7 @@ export default function SharedRabbitholeePage() {
 						</p>
 					)}
 					{rabbithole.description && (
-						<p className="truncate text-muted-foreground text-sm mt-1">
+						<p className="mt-1 truncate text-muted-foreground text-sm">
 							{rabbithole.description}
 						</p>
 					)}

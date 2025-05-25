@@ -90,10 +90,10 @@ export function WikipediaArticlePanel({
 		>
 			{/* Loading Overlay - positioned relative to the panel */}
 			{loadingLinks.size > 0 && !isCollapsed && (
-				<div className="absolute inset-0 bg-background/90 backdrop-blur-sm z-30 flex items-center justify-center">
-					<div className="flex flex-col items-center gap-3 text-center p-8">
-						<div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
-						<div className="text-sm text-muted-foreground font-medium">
+				<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/90 backdrop-blur-sm">
+					<div className="flex flex-col items-center gap-3 p-8 text-center">
+						<div className="h-10 w-10 animate-spin rounded-full border-primary border-b-2" />
+						<div className="font-medium text-muted-foreground text-sm">
 							Loading article...
 						</div>
 					</div>
@@ -136,7 +136,7 @@ export function WikipediaArticlePanel({
 							{/* Root Node Badge */}
 							{isRootNode && (
 								<span
-									className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full font-medium"
+									className="rounded-full bg-green-100 px-2 py-1 font-medium text-green-800 text-xs"
 									title="This is a root node (starting point of exploration)"
 								>
 									Root
@@ -202,7 +202,7 @@ export function WikipediaArticlePanel({
 					</div>
 
 					{/* Content */}
-					<div className="flex-1 overflow-y-auto p-6 wikipedia-article-panel-content">
+					<div className="wikipedia-article-panel-content flex-1 overflow-y-auto p-6">
 						<div className="space-y-4">
 							{/* Article Content */}
 							<div>

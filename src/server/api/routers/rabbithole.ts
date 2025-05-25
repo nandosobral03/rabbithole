@@ -327,41 +327,6 @@ export const rabbitholeRouter = createTRPCRouter({
 				limit: input.limit,
 			});
 		}),
-
-	// Analytics: Get detailed stats for a specific rabbit hole
-	getRabbitholeAnalytics: publicProcedure
-		.input(
-			z.object({
-				id: z.string(),
-			}),
-		)
-		.query(async ({ ctx, input }) => {
-			const rabbithole = await ctx.db.query.sharedRabbitholes.findFirst({
-				where: eq(sharedRabbitholes.id, input.id),
-				columns: {
-					id: true,
-					title: true,
-					nodeCount: true,
-					linkCount: true,
-					viewCount: true,
-					createdAt: true,
-				},
-			});
-
-			if (!rabbithole) {
-				throw new Error("Rabbit hole not found");
-			}
-
-			const nodeStats = await ctx.db.query.nodeAnalytics.findMany({
-				where: eq(nodeAnalytics.rabbitholeId, input.id),
-				orderBy: [desc(nodeAnalytics.incomingConnections)],
-			});
-
-			return {
-				rabbithole,
-				nodeStats,
-			};
-		}),
 });
 
 // Helper function to collect analytics data

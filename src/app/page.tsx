@@ -323,7 +323,7 @@ export default async function HomePage() {
 	);
 
 	return (
-		<div className="min-h-screen bg-background font-chillax flex flex-col items-center">
+		<div className="flex min-h-screen flex-col items-center bg-background font-chillax">
 			<div className="flex flex-1 items-center justify-center px-6 py-8">
 				<div className="w-full max-w-6xl">
 					<div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
@@ -387,7 +387,7 @@ export default async function HomePage() {
 						{/* Center Content */}
 						<div className="space-y-8 text-center lg:col-span-6">
 							{/* Hero Section */}
-							<div className="space-y-4 flex flex-col items-center justify-center">
+							<div className="flex flex-col items-center justify-center space-y-4">
 								<Image
 									src="/icon.png"
 									alt="rabbithole"
