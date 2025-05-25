@@ -1,0 +1,1 @@
+ALTER TABLE `rabbithole_shared_rabbithole` ADD `creator_name` text;

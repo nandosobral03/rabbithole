@@ -69,8 +69,13 @@ export default function SharedRabbitholeePage() {
 							</span>
 						)}
 					</h1>
-					{rabbithole.description && (
+					{rabbithole.creatorName && (
 						<p className="truncate text-muted-foreground text-sm">
+							by {rabbithole.creatorName}
+						</p>
+					)}
+					{rabbithole.description && (
+						<p className="truncate text-muted-foreground text-sm mt-1">
 							{rabbithole.description}
 						</p>
 					)}

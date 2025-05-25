@@ -1,5 +1,3 @@
-"use client";
-
 import {
 	BarChart3,
 	ExternalLink,
@@ -12,11 +10,8 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { api } from "~/trpc/react";
+import { api } from "~/trpc/server";
+import { SearchForm } from "./_components/search-form";
 
 // Function to create a seeded random number based on today's date
 function getDateBasedRandom(seed: number): number {
@@ -41,48 +36,6 @@ function shuffleWithDateSeed<T>(array: T[]): T[] {
 		[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
 	}
 	return shuffled;
-}
-
-// Function to validate and extract Wikipedia article title
-function validateWikipediaInput(input: string): {
-	isValid: boolean;
-	title?: string;
-	error?: string;
-} {
-	const trimmed = input.trim();
-
-	if (!trimmed) {
-		return {
-			isValid: false,
-			error: "Please enter a Wikipedia article title or URL",
-		};
-	}
-
-	// Check if it's a Wikipedia URL
-	const wikipediaUrlRegex =
-		/(?:https?:\/\/)?(?:www\.)?(?:en\.)?wikipedia\.org\/wiki\/([^#?]+)/i;
-	const urlMatch = trimmed.match(wikipediaUrlRegex);
-
-	if (urlMatch?.[1]) {
-		const title = decodeURIComponent(urlMatch[1].replace(/_/g, " "));
-		return { isValid: true, title };
-	}
-
-	// If it's not a URL, treat it as an article title
-	// Basic validation - no special characters that would break Wikipedia URLs
-	if (
-		trimmed.includes("|") ||
-		trimmed.includes("#") ||
-		trimmed.includes("[") ||
-		trimmed.includes("]")
-	) {
-		return {
-			isValid: false,
-			error: "Please enter a valid Wikipedia article title",
-		};
-	}
-
-	return { isValid: true, title: trimmed };
 }
 
 // Hardcoded popular starting points for exploration
@@ -329,6 +282,7 @@ async function fetchArticleOfTheDay(): Promise<{
 
 		const response = await fetch(
 			`https://en.wikipedia.org/api/rest_v1/feed/featured/${year}/${month}/${day}`,
+			{ next: { revalidate: 3600 } }, // Cache for 1 hour
 		);
 
 		if (!response.ok) {
@@ -355,72 +309,18 @@ async function fetchArticleOfTheDay(): Promise<{
 	}
 }
 
-export default function HomePage() {
-	const router = useRouter();
-	const [searchQuery, setSearchQuery] = useState("");
-	const [validationError, setValidationError] = useState<string | null>(null);
-	const [articleOfTheDay, setArticleOfTheDay] = useState<{
-		title: string;
-		url: string;
-	} | null>(null);
-	const [articleOfTheDayError, setArticleOfTheDayError] = useState<
-		string | null
-	>(null);
+export default async function HomePage() {
+	// Fetch all data server-side
+	const [stats, popularArticles, articleOfTheDay] = await Promise.all([
+		api.rabbithole.getRabbitholeStats(),
+		api.rabbithole.getPopularArticles({ limit: 5 }),
+		fetchArticleOfTheDay(),
+	]);
 
-	const { data: stats, isLoading } =
-		api.rabbithole.getRabbitholeStats.useQuery();
-	const { data: popularArticles } = api.rabbithole.getPopularArticles.useQuery({
-		limit: 5,
-	});
-
-	// Fetch article of the day on component mount
-	useEffect(() => {
-		fetchArticleOfTheDay()
-			.then((result) => {
-				if (result) {
-					setArticleOfTheDay(result);
-					setArticleOfTheDayError(null);
-				} else {
-					setArticleOfTheDayError("Could not load today's featured article");
-				}
-			})
-			.catch(() => {
-				setArticleOfTheDayError("Could not load today's featured article");
-			});
-	}, []);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setValidationError(null);
-
-		const validation = validateWikipediaInput(searchQuery);
-
-		if (!validation.isValid) {
-			setValidationError(validation.error || "Invalid input");
-			return;
-		}
-
-		if (!validation.title) {
-			setValidationError("No title found");
-			return;
-		}
-
-		// Navigate to rabbithole page with validated title
-		router.push(`/rabbithole?search=${encodeURIComponent(validation.title)}`);
-	};
-
-	const handleArticleClick = (articleTitle: string) => {
-		router.push(`/rabbithole?search=${encodeURIComponent(articleTitle)}`);
-	};
-
-	const handleArticleOfTheDayClick = () => {
-		if (articleOfTheDay) {
-			// Navigate directly to rabbithole page with the article title
-			router.push(
-				`/rabbithole?search=${encodeURIComponent(articleOfTheDay.title)}`,
-			);
-		}
-	};
+	const shuffledTopics = shuffleWithDateSeed(POPULAR_STARTING_POINTS).slice(
+		0,
+		6,
+	);
 
 	return (
 		<div className="min-h-screen bg-background font-chillax flex flex-col items-center">
@@ -430,7 +330,7 @@ export default function HomePage() {
 						{/* Left Sidebar */}
 						<div className="space-y-6 lg:col-span-3">
 							{/* Featured Article */}
-							{articleOfTheDay && (
+							{articleOfTheDay ? (
 								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
 									<div className="mb-3 flex items-center gap-2">
 										<Star className="h-4 w-4 text-chart-1" />
@@ -438,21 +338,17 @@ export default function HomePage() {
 											Today's Featured
 										</h3>
 									</div>
-									<button
-										type="button"
-										onClick={handleArticleOfTheDayClick}
-										className="w-full rounded-md border border-chart-1/20 bg-chart-1/10 p-3 text-left font-medium text-chart-1 text-sm transition-colors hover:bg-chart-1/20"
+									<Link
+										href={`/rabbithole?search=${encodeURIComponent(articleOfTheDay.title)}`}
+										className="block w-full rounded-md border border-chart-1/20 bg-chart-1/10 p-3 text-left font-medium text-chart-1 text-sm transition-colors hover:bg-chart-1/20"
 									>
 										{articleOfTheDay.title}
-									</button>
+									</Link>
 									<p className="mt-2 text-muted-foreground text-xs">
 										Click to explore this featured article
 									</p>
 								</div>
-							)}
-
-							{/* Featured Article Error */}
-							{articleOfTheDayError && !articleOfTheDay && (
+							) : (
 								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
 									<div className="mb-2 flex items-center gap-2">
 										<Star className="h-4 w-4 text-muted-foreground" />
@@ -461,7 +357,7 @@ export default function HomePage() {
 										</h3>
 									</div>
 									<p className="text-muted-foreground text-xs">
-										{articleOfTheDayError}
+										Could not load today's featured article
 									</p>
 								</div>
 							)}
@@ -475,18 +371,15 @@ export default function HomePage() {
 									</h3>
 								</div>
 								<div className="space-y-2">
-									{shuffleWithDateSeed(POPULAR_STARTING_POINTS)
-										.slice(0, 6)
-										.map((article) => (
-											<button
-												key={article}
-												type="button"
-												onClick={() => handleArticleClick(article)}
-												className="w-full rounded bg-muted px-3 py-2 text-left text-muted-foreground text-xs transition-colors hover:bg-muted/80 hover:text-foreground"
-											>
-												{article}
-											</button>
-										))}
+									{shuffledTopics.map((article) => (
+										<Link
+											key={article}
+											href={`/rabbithole?search=${encodeURIComponent(article)}`}
+											className="block w-full rounded bg-muted px-3 py-2 text-left text-muted-foreground text-xs transition-colors hover:bg-muted/80 hover:text-foreground"
+										>
+											{article}
+										</Link>
+									))}
 								</div>
 							</div>
 						</div>
@@ -517,31 +410,7 @@ export default function HomePage() {
 
 							{/* Search Form */}
 							<div className="mx-auto max-w-md">
-								<form onSubmit={handleSubmit} className="space-y-4">
-									<div className="flex gap-2">
-										<Input
-											type="text"
-											placeholder="Enter Wikipedia article or URL..."
-											value={searchQuery}
-											onChange={(e) => {
-												setSearchQuery(e.target.value);
-												setValidationError(null);
-											}}
-											className="h-12 flex-1 border-border text-center text-base focus:border-primary focus:ring-primary"
-										/>
-										<Button
-											type="submit"
-											className="h-12 bg-primary px-6 text-primary-foreground hover:bg-primary/90"
-										>
-											Start Exploring
-										</Button>
-									</div>
-									{validationError && (
-										<p className="text-center text-destructive text-sm">
-											{validationError}
-										</p>
-									)}
-								</form>
+								<SearchForm />
 							</div>
 
 							{/* Navigation Guide */}
@@ -603,11 +472,10 @@ export default function HomePage() {
 									</div>
 									<div className="space-y-2">
 										{popularArticles.slice(0, 3).map((article) => (
-											<button
+											<Link
 												key={article.id}
-												type="button"
-												onClick={() => handleArticleClick(article.articleTitle)}
-												className="w-full rounded border border-chart-3/20 bg-chart-3/10 p-3 text-left text-chart-3 transition-colors hover:bg-chart-3/20"
+												href={`/rabbithole?search=${encodeURIComponent(article.articleTitle)}`}
+												className="block w-full rounded border border-chart-3/20 bg-chart-3/10 p-3 text-left text-chart-3 transition-colors hover:bg-chart-3/20"
 											>
 												<div className="truncate font-medium text-xs">
 													{article.articleTitle}
@@ -615,14 +483,14 @@ export default function HomePage() {
 												<div className="mt-1 text-chart-3/80 text-xs">
 													{article.totalAppearances} rabbit holes
 												</div>
-											</button>
+											</Link>
 										))}
 									</div>
 								</div>
 							)}
 
 							{/* Platform Stats */}
-							{!isLoading && stats && (
+							{stats && (
 								<div className="rounded-lg border border-border bg-card p-4 shadow-sm">
 									<Link
 										href="/analytics"

@@ -1,13 +1,20 @@
 {
-	"version": "7",
-	"dialect": "sqlite",
-	"entries": [
-		{
-			"idx": 0,
-			"version": "6",
-			"when": 1748116253886,
-			"tag": "0000_fixed_bloodscream",
-			"breakpoints": true
-		}
-	]
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1748116253886,
+      "tag": "0000_fixed_bloodscream",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1748205172939,
+      "tag": "0001_sticky_wolfsbane",
+      "breakpoints": true
+    }
+  ]
 }

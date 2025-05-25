@@ -4,6 +4,7 @@ import { RotateCcw, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 import { WikipediaGraphCanvas } from "./graph/wikipedia-graph-canvas";
 import { WikipediaArticlePanel } from "./panels/wikipedia-article-panel";
@@ -27,12 +28,10 @@ export function WikipediaGraphExplorer({
 	onGraphChange,
 }: WikipediaGraphExplorerProps = {}) {
 	const router = useRouter();
-	const [graphData, setGraphData] = useState<GraphData>(
-		initialGraphData ?? {
-			nodes: [],
-			links: [],
-		},
-	);
+	const [graphData, setGraphData] = useState<GraphData>({
+		nodes: [],
+		links: [],
+	});
 	const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
 	const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
 	const [panelWidth, setPanelWidth] = useState(900);
@@ -42,6 +41,153 @@ export function WikipediaGraphExplorer({
 	const [shareUrl, setShareUrl] = useState<string | null>(null);
 	const [isSharing, setIsSharing] = useState(false);
 	const [showShareSuccess, setShowShareSuccess] = useState(false);
+	const [isLoadingInitialData, setIsLoadingInitialData] = useState(false);
+	const [showShareModal, setShowShareModal] = useState(false);
+	const [shareTitle, setShareTitle] = useState("");
+	const [shareAuthor, setShareAuthor] = useState("");
+
+	// BFS loading function for initial graph data
+	const loadInitialGraphDataWithBFS = useCallback(
+		async (initialData: GraphData) => {
+			if (!initialData || initialData.nodes.length === 0) return;
+
+			setIsLoadingInitialData(true);
+
+			// Find root nodes (nodes with no incoming connections)
+			const rootNodes = initialData.nodes.filter((node) => {
+				return !initialData.links.some((link) => {
+					const targetId =
+						typeof link.target === "string"
+							? link.target
+							: (link.target as GraphNode).id;
+					return targetId === node.id;
+				});
+			});
+
+			// If no root nodes found, use the first node as root
+			const firstNode = initialData.nodes[0];
+			if (!firstNode) return;
+
+			const startNodes = rootNodes.length > 0 ? rootNodes : [firstNode];
+
+			// BFS queue and tracking
+			const queue: GraphNode[] = [...startNodes];
+			const addedNodes = new Set<string>();
+			const nodesToAdd: GraphNode[] = [];
+			const linksToAdd: GraphData["links"] = [];
+
+			// Build BFS order
+			while (queue.length > 0) {
+				const currentNode = queue.shift();
+				if (!currentNode) continue;
+
+				if (addedNodes.has(currentNode.id)) continue;
+
+				addedNodes.add(currentNode.id);
+				nodesToAdd.push(currentNode);
+
+				// Find all links from this node and add target nodes to queue
+				const outgoingLinks = initialData.links.filter((link) => {
+					const sourceId =
+						typeof link.source === "string"
+							? link.source
+							: (link.source as GraphNode).id;
+					return sourceId === currentNode.id;
+				});
+
+				for (const link of outgoingLinks) {
+					linksToAdd.push(link);
+					const targetId =
+						typeof link.target === "string"
+							? link.target
+							: (link.target as GraphNode).id;
+					const targetNode = initialData.nodes.find(
+						(node) => node.id === targetId,
+					);
+
+					if (targetNode && !addedNodes.has(targetNode.id)) {
+						queue.push(targetNode);
+					}
+				}
+
+				// Also find incoming links to this node
+				const incomingLinks = initialData.links.filter((link) => {
+					const targetId =
+						typeof link.target === "string"
+							? link.target
+							: (link.target as GraphNode).id;
+					return (
+						targetId === currentNode.id &&
+						!linksToAdd.some((l) => l.id === link.id)
+					);
+				});
+
+				for (const link of incomingLinks) {
+					linksToAdd.push(link);
+				}
+			}
+
+			// Add nodes progressively with intervals
+			let currentIndex = 0;
+			const addNextNode = () => {
+				if (currentIndex >= nodesToAdd.length) {
+					setIsLoadingInitialData(false);
+					return;
+				}
+
+				// Add one node at a time for clear BFS visualization
+				const nodeToAdd = nodesToAdd[currentIndex];
+				if (!nodeToAdd) {
+					currentIndex++;
+					setTimeout(addNextNode, 200);
+					return;
+				}
+
+				setGraphData((prevData) => {
+					const newNodes = [...prevData.nodes, nodeToAdd];
+
+					// Add links for this specific node
+					const relevantLinks = linksToAdd.filter((link) => {
+						const sourceId =
+							typeof link.source === "string"
+								? link.source
+								: (link.source as GraphNode).id;
+						const targetId =
+							typeof link.target === "string"
+								? link.target
+								: (link.target as GraphNode).id;
+
+						// Include link if both source and target are now in the graph
+						return (
+							newNodes.some((n) => n && n.id === sourceId) &&
+							newNodes.some((n) => n && n.id === targetId)
+						);
+					});
+
+					return {
+						nodes: newNodes,
+						links: relevantLinks,
+					};
+				});
+
+				currentIndex++;
+
+				// Schedule next node with shorter interval for smoother animation
+				setTimeout(addNextNode, 200); // 200ms interval between individual nodes
+			};
+
+			// Start the progressive loading
+			addNextNode();
+		},
+		[],
+	);
+
+	// Load initial data with BFS animation when component mounts
+	useEffect(() => {
+		if (initialGraphData && initialGraphData.nodes.length > 0) {
+			loadInitialGraphDataWithBFS(initialGraphData);
+		}
+	}, [initialGraphData, loadInitialGraphDataWithBFS]);
 
 	const addNodeToGraph = useCallback(
 		(pageData: WikipediaFullPageData, isRoot = false) => {
@@ -118,33 +264,74 @@ export function WikipediaGraphExplorer({
 	const handleShare = useCallback(async () => {
 		if (graphData.nodes.length === 0) return;
 
+		// Find the root node (node with no incoming connections)
+		const rootNode = graphData.nodes.find((node) => {
+			return !graphData.links.some((link) => {
+				const targetId =
+					typeof link.target === "string"
+						? link.target
+						: (link.target as GraphNode).id;
+				return targetId === node.id;
+			});
+		});
+
+		// Generate a default title based on the root node or fallback to first node
+		const baseTitle =
+			rootNode?.title || graphData.nodes[0]?.title || "Wikipedia Rabbit Hole";
+		const defaultTitle =
+			graphData.nodes.length === 1
+				? `${baseTitle} - Wikipedia Rabbit Hole`
+				: `${baseTitle} and ${graphData.nodes.length - 1} more articles`;
+
+		setShareTitle(defaultTitle);
+		setShareAuthor("");
+		setShowShareModal(true);
+	}, [graphData]);
+
+	const handleShareSubmit = useCallback(async () => {
+		if (graphData.nodes.length === 0) return;
+
 		setIsSharing(true);
 		try {
 			// Normalize graph data - convert D3 object references back to string IDs
+			// and ensure we don't have duplicate links
+			const normalizedLinks = new Map<
+				string,
+				{ source: string; target: string; id: string }
+			>();
+
+			for (const link of graphData.links) {
+				const sourceId =
+					typeof link.source === "string"
+						? link.source
+						: (link.source as GraphNode).id || link.source;
+				const targetId =
+					typeof link.target === "string"
+						? link.target
+						: (link.target as GraphNode).id || link.target;
+
+				// Create a consistent link ID to prevent duplicates
+				const linkId = `${sourceId}->${targetId}`;
+
+				// Only add if we haven't seen this exact link before
+				if (!normalizedLinks.has(linkId)) {
+					normalizedLinks.set(linkId, {
+						source: sourceId,
+						target: targetId,
+						id: linkId,
+					});
+				}
+			}
+
 			const normalizedGraphData = {
 				nodes: graphData.nodes,
-				links: graphData.links.map((link) => ({
-					source:
-						typeof link.source === "string"
-							? link.source
-							: (link.source as GraphNode).id || link.source,
-					target:
-						typeof link.target === "string"
-							? link.target
-							: (link.target as GraphNode).id || link.target,
-					id: link.id,
-				})),
+				links: Array.from(normalizedLinks.values()),
 			};
 
-			// Generate a title based on the first node or nodes count
-			const title =
-				graphData.nodes.length === 1
-					? `${graphData.nodes[0]?.title} - Wikipedia Rabbit Hole`
-					: `Wikipedia Rabbit Hole (${graphData.nodes.length} articles)`;
-
 			const result = await shareRabbithole({
-				title,
-				description: `A Wikipedia rabbit hole with ${graphData.nodes.length} articles and ${graphData.links.length} connections.`,
+				title: shareTitle,
+				creatorName: shareAuthor || undefined,
+				description: `A Wikipedia rabbit hole with ${graphData.nodes.length} articles and ${normalizedLinks.size} connections.`,
 				graphData: normalizedGraphData,
 			});
 
@@ -154,15 +341,19 @@ export function WikipediaGraphExplorer({
 			// Copy to clipboard
 			await navigator.clipboard.writeText(url);
 
-			// Show success notification
+			// Close modal and show success notification
+			setShowShareModal(false);
 			setShowShareSuccess(true);
 			setTimeout(() => setShowShareSuccess(false), 3000);
+
+			// Redirect to the shared URL
+			router.push(`/${result.id}`);
 		} catch (error) {
 			console.error("Failed to share rabbit hole:", error);
 		} finally {
 			setIsSharing(false);
 		}
-	}, [graphData, shareRabbithole]);
+	}, [graphData, shareRabbithole, shareTitle, shareAuthor, router]);
 
 	const handleNodeClick = useCallback(
 		(node: GraphNode) => {
@@ -863,16 +1054,32 @@ export function WikipediaGraphExplorer({
 		<div className="relative flex h-screen bg-background overflow-hidden">
 			<style>{wikipediaStyles}</style>
 
+			{/* Initial Loading Indicator */}
+			{isLoadingInitialData && (
+				<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+					<div className="text-center">
+						<div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-primary border-b-2" />
+						<p className="text-muted-foreground">Loading rabbit hole...</p>
+						<p className="text-muted-foreground text-sm">
+							{graphData.nodes.length} nodes loaded
+						</p>
+					</div>
+				</div>
+			)}
+
 			{graphData.nodes.length > 0 && (
 				<div className="absolute top-4 left-4 z-10 flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
 					<div className="font-medium text-muted-foreground text-xs">
 						{graphData.nodes.length} nodes • {graphData.links.length} links
+						{isLoadingInitialData && (
+							<span className="ml-2 text-primary">• Loading...</span>
+						)}
 					</div>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={handleShare}
-						disabled={isSharing}
+						disabled={isSharing || isLoadingInitialData}
 						className="flex h-6 items-center gap-1 px-2 text-xs"
 					>
 						<Share2 className="h-3 w-3" />
@@ -882,6 +1089,7 @@ export function WikipediaGraphExplorer({
 						variant="outline"
 						size="sm"
 						onClick={handleRestart}
+						disabled={isLoadingInitialData}
 						className="flex h-6 items-center gap-1 px-2 text-xs"
 					>
 						<RotateCcw className="h-3 w-3" />
@@ -895,6 +1103,79 @@ export function WikipediaGraphExplorer({
 				<div className="absolute top-16 left-4 z-20 rounded-lg border border-accent bg-accent px-3 py-2 shadow-lg">
 					<div className="font-medium text-accent-foreground text-xs">
 						✅ Rabbit hole shared! Link copied to clipboard
+					</div>
+				</div>
+			)}
+
+			{/* Share Modal */}
+			{showShareModal && (
+				<div className="fixed inset-0 z-40 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+					<div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-2xl">
+						<div className="mb-4">
+							<h2 className="font-semibold text-card-foreground text-lg">
+								Share Rabbit Hole
+							</h2>
+							<p className="text-muted-foreground text-sm">
+								Create a shareable link for your Wikipedia exploration
+							</p>
+						</div>
+
+						<div className="space-y-4">
+							<div>
+								<label
+									htmlFor="share-title"
+									className="block font-medium text-card-foreground text-sm mb-2"
+								>
+									Rabbit Hole Name *
+								</label>
+								<Input
+									id="share-title"
+									value={shareTitle}
+									onChange={(e) => setShareTitle(e.target.value)}
+									placeholder="Enter a name for your rabbit hole"
+									className="w-full"
+								/>
+							</div>
+
+							<div>
+								<label
+									htmlFor="share-author"
+									className="block font-medium text-card-foreground text-sm mb-2"
+								>
+									Your Name (optional)
+								</label>
+								<Input
+									id="share-author"
+									value={shareAuthor}
+									onChange={(e) => setShareAuthor(e.target.value)}
+									placeholder="Enter your name"
+									className="w-full"
+								/>
+							</div>
+
+							<div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
+								<p className="text-amber-800 text-sm dark:text-amber-200">
+									⚠️ Rabbit holes are automatically deleted after 14 days of no
+									new visitors to keep the service running smoothly.
+								</p>
+							</div>
+						</div>
+
+						<div className="mt-6 flex gap-3 justify-end">
+							<Button
+								variant="outline"
+								onClick={() => setShowShareModal(false)}
+								disabled={isSharing}
+							>
+								Cancel
+							</Button>
+							<Button
+								onClick={handleShareSubmit}
+								disabled={isSharing || !shareTitle.trim()}
+							>
+								{isSharing ? "Sharing..." : "Share Rabbit Hole"}
+							</Button>
+						</div>
 					</div>
 				</div>
 			)}

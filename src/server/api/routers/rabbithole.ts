@@ -44,6 +44,7 @@ export const rabbitholeRouter = createTRPCRouter({
 		.input(
 			z.object({
 				title: z.string().min(1).max(200),
+				creatorName: z.string().max(100).optional(),
 				description: z.string().max(500).optional(),
 				graphData: GraphDataSchema,
 			}),
@@ -61,6 +62,7 @@ export const rabbitholeRouter = createTRPCRouter({
 			await ctx.db.insert(sharedRabbitholes).values({
 				id,
 				title: input.title,
+				creatorName: input.creatorName,
 				description: input.description,
 				graphData: JSON.stringify(input.graphData),
 				expiresAt,
@@ -118,6 +120,7 @@ export const rabbitholeRouter = createTRPCRouter({
 			return {
 				id: rabbithole.id,
 				title: rabbithole.title,
+				creatorName: rabbithole.creatorName,
 				description: rabbithole.description,
 				graphData,
 				createdAt: rabbithole.createdAt,
@@ -132,6 +135,7 @@ export const rabbitholeRouter = createTRPCRouter({
 			z.object({
 				originalId: z.string(),
 				title: z.string().min(1).max(200),
+				creatorName: z.string().max(100).optional(),
 				description: z.string().max(500).optional(),
 				graphData: GraphDataSchema,
 			}),
@@ -157,6 +161,7 @@ export const rabbitholeRouter = createTRPCRouter({
 			await ctx.db.insert(sharedRabbitholes).values({
 				id,
 				title: input.title,
+				creatorName: input.creatorName,
 				description: input.description,
 				graphData: JSON.stringify(input.graphData),
 				expiresAt,
@@ -184,6 +189,7 @@ export const rabbitholeRouter = createTRPCRouter({
 				columns: {
 					id: true,
 					title: true,
+					creatorName: true,
 					description: true,
 					createdAt: true,
 					viewCount: true,

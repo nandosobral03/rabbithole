@@ -31,6 +31,7 @@ export const sharedRabbitholes = createTable(
 	(d) => ({
 		id: text("id").primaryKey(), // UUID for sharing
 		title: text("title").notNull(), // Title of the rabbit hole
+		creatorName: text("creator_name"), // Optional creator name
 		description: text("description"), // Optional description
 		graphData: text("graph_data").notNull(), // JSON string of the graph data
 		createdAt: d
