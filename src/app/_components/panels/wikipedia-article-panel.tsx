@@ -117,7 +117,7 @@ export function WikipediaArticlePanel({
 				style={{
 					position: "absolute",
 					top: "50%",
-					left: isCollapsed ? "10px" : "-20px",
+					left: "-1.25rem",
 					transform: "translateY(-50%)",
 					zIndex: 30,
 				}}
@@ -133,6 +133,15 @@ export function WikipediaArticlePanel({
 							<h3 className="min-w-0 flex-1 truncate font-semibold text-card-foreground text-xl">
 								{selectedNode.title}
 							</h3>
+							{/* Root Node Badge */}
+							{isRootNode && (
+								<span
+									className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full font-medium"
+									title="This is a root node (starting point of exploration)"
+								>
+									Root
+								</span>
+							)}
 						</div>
 
 						<div className="flex flex-shrink-0 items-center gap-2">
@@ -152,12 +161,22 @@ export function WikipediaArticlePanel({
 									}`}
 								>
 									<ArrowLeft className="h-4 w-4" />
-									Back
 								</Button>
 							)}
 
+							{/* View on Wikipedia Button */}
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => window.open(selectedNode.url, "_blank")}
+								className="flex items-center gap-2 text-muted-foreground hover:text-card-foreground"
+								title="View on Wikipedia"
+							>
+								<ExternalLink className="h-4 w-4" />
+							</Button>
+
 							{/* Remove Button */}
-							{graphData.nodes.length > 1 && (
+							{graphData.nodes.length > 1 && !isRootNode && (
 								<Button
 									variant="ghost"
 									size="sm"
@@ -166,7 +185,6 @@ export function WikipediaArticlePanel({
 									title="Remove this article and any orphaned children"
 								>
 									<Trash2 className="h-4 w-4" />
-									Remove
 								</Button>
 							)}
 
@@ -176,9 +194,9 @@ export function WikipediaArticlePanel({
 								size="sm"
 								onClick={() => setIsDetailPanelOpen(false)}
 								className="flex items-center gap-2"
+								title="Close panel"
 							>
 								<X className="h-4 w-4" />
-								Close
 							</Button>
 						</div>
 					</div>
@@ -186,17 +204,6 @@ export function WikipediaArticlePanel({
 					{/* Content */}
 					<div className="flex-1 overflow-y-auto p-6 wikipedia-article-panel-content">
 						<div className="space-y-4">
-							{/* External Link */}
-							<a
-								href={selectedNode.url}
-								target="_blank"
-								rel="noopener noreferrer"
-								className="inline-flex items-center gap-2 text-primary hover:underline"
-							>
-								<ExternalLink className="h-4 w-4" />
-								View on Wikipedia
-							</a>
-
 							{/* Article Content */}
 							<div>
 								<WikipediaArticleViewer

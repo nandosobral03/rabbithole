@@ -41,24 +41,73 @@ export function WikipediaGraphCanvas({
 	useEffect(() => {
 		if (graphRef.current && graphData.nodes.length > 0) {
 			// Configure the charge (repulsion) force for node separation
-			graphRef.current.d3Force("charge").strength(-1200).distanceMax(300);
+			graphRef.current.d3Force("charge").strength(-2000).distanceMax(500);
 
 			// Configure the link force for connection distance - make it more flexible
-			graphRef.current.d3Force("link").distance(120).strength(0.3);
+			graphRef.current.d3Force("link").distance(200).strength(0.1);
 
 			// Configure center force to keep nodes from drifting too far
-			graphRef.current.d3Force("center").strength(0.1);
+			graphRef.current.d3Force("center").strength(0.02);
 
 			// Add collision detection for better node spacing
 			const d3 = graphRef.current.d3;
 			if (d3?.forceCollide) {
-				graphRef.current.d3Force("collision", d3.forceCollide().radius(30));
+				graphRef.current.d3Force("collision", d3.forceCollide().radius(50));
 			}
 
-			// Reheat the simulation to apply the new forces
-			graphRef.current.d3ReheatSimulation();
+			// Always restart with high energy for better spreading
+			const simulation = graphRef.current.d3;
+			if (simulation) {
+				simulation.alpha(1).restart();
+			}
 		}
 	}, [graphData.nodes.length]);
+
+	// Handle initial positioning when graph first loads
+	const handleEngineStop = useCallback(() => {
+		// Check if nodes are too clustered (all within a small area)
+		if (graphRef.current && graphData.nodes.length > 1) {
+			const nodes = graphData.nodes;
+			let minX = Number.POSITIVE_INFINITY;
+			let maxX = Number.NEGATIVE_INFINITY;
+			let minY = Number.POSITIVE_INFINITY;
+			let maxY = Number.NEGATIVE_INFINITY;
+
+			// biome-ignore lint/suspicious/noExplicitAny: D3 nodes have dynamic x,y properties
+			for (const node of nodes as any[]) {
+				if (node.x !== undefined && node.y !== undefined) {
+					minX = Math.min(minX, node.x);
+					maxX = Math.max(maxX, node.x);
+					minY = Math.min(minY, node.y);
+					maxY = Math.max(maxY, node.y);
+				}
+			}
+
+			const spreadX = maxX - minX;
+			const spreadY = maxY - minY;
+			const totalSpread = Math.sqrt(spreadX * spreadX + spreadY * spreadY);
+
+			// If nodes are too clustered (spread less than 200 pixels), force them apart
+			if (totalSpread < 200) {
+				// Apply much stronger forces
+				if (graphRef.current.d3Force) {
+					graphRef.current.d3Force("charge").strength(-5000);
+					graphRef.current.d3Force("link").distance(300);
+				}
+
+				// Restart simulation with high energy
+				const simulation = graphRef.current.d3;
+				if (simulation?.alpha) {
+					simulation.alpha(1).restart();
+				} else {
+					// Fallback: use d3ReheatSimulation if direct access fails
+					if (graphRef.current.d3ReheatSimulation) {
+						graphRef.current.d3ReheatSimulation();
+					}
+				}
+			}
+		}
+	}, [graphData.nodes]);
 
 	return (
 		<div className="relative flex-1 overflow-hidden">
@@ -69,8 +118,12 @@ export function WikipediaGraphCanvas({
 				nodeLabel="title"
 				nodeVal="val"
 				nodeColor="color"
-				d3AlphaDecay={0.01}
-				d3VelocityDecay={0.4}
+				nodeRelSize={8}
+				d3AlphaDecay={0.005}
+				d3VelocityDecay={0.3}
+				warmupTicks={100}
+				cooldownTicks={200}
+				onEngineStop={handleEngineStop}
 				linkDirectionalArrowLength={6}
 				linkDirectionalArrowRelPos={1}
 				linkCurvature={0.05}

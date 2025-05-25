@@ -44,10 +44,6 @@ export const wikipediaRouter = createTRPCRouter({
 
 				const encodedTitle = encodeURIComponent(cleanTitle);
 
-				console.log(
-					`Fetching Wikipedia page: "${cleanTitle}" (encoded: "${encodedTitle}")`,
-				);
-
 				// Fetch page content and info
 				const pageResponse = await fetch(
 					`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
@@ -198,10 +194,6 @@ export const wikipediaRouter = createTRPCRouter({
 				}
 
 				const encodedTitle = encodeURIComponent(cleanTitle);
-
-				console.log(
-					`Fetching full Wikipedia page: "${cleanTitle}" (encoded: "${encodedTitle}")`,
-				);
 
 				// Fetch full HTML content
 				const htmlResponse = await fetch(

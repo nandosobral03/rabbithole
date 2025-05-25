@@ -18,11 +18,13 @@ import { wikipediaStyles } from "./wikipedia-article-viewer";
 interface WikipediaGraphExplorerProps {
 	initialGraphData?: GraphData;
 	initialSearchQuery?: string | null;
+	onGraphChange?: () => void;
 }
 
 export function WikipediaGraphExplorer({
 	initialGraphData,
 	initialSearchQuery,
+	onGraphChange,
 }: WikipediaGraphExplorerProps = {}) {
 	const router = useRouter();
 	const [graphData, setGraphData] = useState<GraphData>(
@@ -75,10 +77,13 @@ export function WikipediaGraphExplorer({
 					color: generateNodeColor(pageData.title),
 				};
 
+				// Call onGraphChange when a new node is added
+				onGraphChange?.();
+
 				return { nodes: [...prevData.nodes, newNode], links: prevData.links };
 			});
 		},
-		[],
+		[onGraphChange],
 	);
 
 	const {
@@ -181,14 +186,10 @@ export function WikipediaGraphExplorer({
 	const handleNodeRightClick = useCallback(
 		(node: GraphNode) => {
 			setGraphData((prevData) => {
-				// Don't delete if it's the last node
 				if (prevData.nodes.length <= 1) {
-					console.log("Cannot delete the last node in the graph");
 					return prevData;
 				}
 
-				// This is a simplified version that just removes the node and its links
-				// The full cascading logic will be handled by the actual removeNodeFromGraph function
 				const updatedNodes = prevData.nodes.filter((n) => n.id !== node.id);
 				const updatedLinks = prevData.links.filter((link) => {
 					const sourceId =
@@ -202,7 +203,7 @@ export function WikipediaGraphExplorer({
 					return sourceId !== node.id && targetId !== node.id;
 				});
 
-				console.log(`Right-click removed node: ${node.title}`);
+				onGraphChange?.();
 
 				return {
 					nodes: updatedNodes,
@@ -216,7 +217,7 @@ export function WikipediaGraphExplorer({
 				setIsDetailPanelOpen(false);
 			}
 		},
-		[selectedNode],
+		[selectedNode, onGraphChange],
 	);
 
 	const goBackToParent = useCallback(() => {
@@ -423,6 +424,9 @@ export function WikipediaGraphExplorer({
 						}
 					}
 
+					// Call onGraphChange when a new node is added
+					onGraphChange?.();
+
 					return {
 						nodes: updatedNodes,
 						links: updatedLinks,
@@ -447,7 +451,7 @@ export function WikipediaGraphExplorer({
 				});
 			}
 		},
-		[selectedNode, fetchPage, graphData.nodes, graphData.links],
+		[selectedNode, fetchPage, graphData.nodes, graphData.links, onGraphChange],
 	);
 
 	const handleArticleMiddleClick = useCallback(
@@ -615,6 +619,9 @@ export function WikipediaGraphExplorer({
 						}
 					}
 
+					// Call onGraphChange when a new node is added
+					onGraphChange?.();
+
 					return {
 						nodes: updatedNodes,
 						links: updatedLinks,
@@ -636,7 +643,7 @@ export function WikipediaGraphExplorer({
 				});
 			}
 		},
-		[selectedNode, fetchPage, graphData.nodes, graphData.links],
+		[selectedNode, fetchPage, graphData.nodes, graphData.links, onGraphChange],
 	);
 
 	const handlePanelResize = useCallback(
@@ -664,9 +671,7 @@ export function WikipediaGraphExplorer({
 
 	const removeNodeFromGraph = useCallback(
 		(nodeToRemove: GraphNode) => {
-			// Don't delete if it's the last node
 			if (graphData.nodes.length <= 1) {
-				console.log("Cannot delete the last node in the graph");
 				return;
 			}
 
@@ -681,7 +686,6 @@ export function WikipediaGraphExplorer({
 
 			// Don't allow deletion of root nodes
 			if (isRootNode) {
-				console.log("Cannot delete root node:", nodeToRemove.title);
 				return;
 			}
 
@@ -748,10 +752,8 @@ export function WikipediaGraphExplorer({
 					});
 				}
 
-				console.log(
-					`Removed ${nodesToRemove.size} nodes (including orphaned children):`,
-					Array.from(nodesToRemove),
-				);
+				// Call onGraphChange when nodes are removed
+				onGraphChange?.();
 
 				return {
 					nodes: updatedNodes,
@@ -765,7 +767,7 @@ export function WikipediaGraphExplorer({
 				setIsDetailPanelOpen(false);
 			}
 		},
-		[selectedNode, graphData.nodes, graphData.links],
+		[selectedNode, graphData.nodes, graphData.links, onGraphChange],
 	);
 
 	// Helper function to check if a node can reach any root node
