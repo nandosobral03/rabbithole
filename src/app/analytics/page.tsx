@@ -11,6 +11,8 @@ import {
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
+import { AnalyticsSection } from "../_components/analytics/analytics-section";
+import { StatCard } from "../_components/analytics/stat-card";
 
 export default function AnalyticsPage() {
 	const { data: stats, isLoading: statsLoading } =
@@ -288,85 +290,6 @@ export default function AnalyticsPage() {
 					</div>
 				)}
 			</div>
-		</div>
-	);
-}
-
-interface StatCardProps {
-	icon: React.ReactNode;
-	title: string;
-	value: number;
-	subtitle: string;
-	color: "chart-1" | "chart-2" | "chart-3" | "chart-4" | "chart-5";
-}
-
-function StatCard({ icon, title, value, subtitle, color }: StatCardProps) {
-	const colorClasses = {
-		"chart-1": "bg-chart-1/10 text-chart-1",
-		"chart-2": "bg-chart-2/10 text-chart-2",
-		"chart-3": "bg-chart-3/10 text-chart-3",
-		"chart-4": "bg-chart-4/10 text-chart-4",
-		"chart-5": "bg-chart-5/10 text-chart-5",
-	};
-
-	return (
-		<div className="rounded-lg border border-border bg-card p-6">
-			<div className="flex items-center">
-				<div className={`rounded-lg p-2 ${colorClasses[color]}`}>{icon}</div>
-				<div className="ml-4">
-					<h3 className="font-medium text-muted-foreground text-sm">{title}</h3>
-					<p className="font-semibold text-2xl text-foreground">
-						{value.toLocaleString()}
-					</p>
-					<p className="text-muted-foreground text-sm">{subtitle}</p>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-interface AnalyticsSectionProps {
-	title: string;
-	subtitle: string;
-	isLoading: boolean;
-	children: React.ReactNode;
-	className?: string;
-}
-
-function AnalyticsSection({
-	title,
-	subtitle,
-	isLoading,
-	children,
-	className = "",
-}: AnalyticsSectionProps) {
-	return (
-		<div className={`rounded-lg border border-border bg-card p-6 ${className}`}>
-			<div className="mb-4">
-				<h3 className="font-semibold text-foreground text-lg">{title}</h3>
-				<p className="text-muted-foreground text-sm">{subtitle}</p>
-			</div>
-			{isLoading ? (
-				<div className="space-y-3">
-					<div className="animate-pulse">
-						<div className="h-12 rounded-lg bg-muted/50" />
-					</div>
-					<div className="animate-pulse">
-						<div className="h-12 rounded-lg bg-muted/50" />
-					</div>
-					<div className="animate-pulse">
-						<div className="h-12 rounded-lg bg-muted/50" />
-					</div>
-					<div className="animate-pulse">
-						<div className="h-12 rounded-lg bg-muted/50" />
-					</div>
-					<div className="animate-pulse">
-						<div className="h-12 rounded-lg bg-muted/50" />
-					</div>
-				</div>
-			) : (
-				<div className="space-y-3">{children}</div>
-			)}
 		</div>
 	);
 }

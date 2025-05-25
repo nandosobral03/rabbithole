@@ -1,13 +1,14 @@
 "use client";
 
-import { RotateCcw, Share2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react";
 import { WikipediaGraphCanvas } from "./graph/wikipedia-graph-canvas";
+import { ShareModal } from "./modals/share-modal";
 import { WikipediaArticlePanel } from "./panels/wikipedia-article-panel";
+import { GraphControls } from "./shared/graph-controls";
+import { LoadingOverlay } from "./shared/loading-overlay";
+import { ShareSuccessNotification } from "./shared/share-success-notification";
 import type {
 	GraphData,
 	GraphNode,
@@ -1054,131 +1055,37 @@ export function WikipediaGraphExplorer({
 		<div className="relative flex h-screen overflow-hidden bg-background">
 			<style>{wikipediaStyles}</style>
 
-			{/* Initial Loading Indicator */}
-			{isLoadingInitialData && (
-				<div className="absolute inset-0 z-30 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-					<div className="text-center">
-						<div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-primary border-b-2" />
-						<p className="text-muted-foreground">Loading rabbit hole...</p>
-						<p className="text-muted-foreground text-sm">
-							{graphData.nodes.length} nodes loaded
-						</p>
-					</div>
-				</div>
-			)}
+			{/* Loading Overlay */}
+			<LoadingOverlay
+				isVisible={isLoadingInitialData}
+				title="Loading rabbit hole..."
+				nodeCount={graphData.nodes.length}
+			/>
 
-			{graphData.nodes.length > 0 && (
-				<div className="absolute top-4 left-4 z-10 flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 shadow-lg">
-					<div className="font-medium text-muted-foreground text-xs">
-						{graphData.nodes.length} nodes • {graphData.links.length} links
-						{isLoadingInitialData && (
-							<span className="ml-2 text-primary">• Loading...</span>
-						)}
-					</div>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleShare}
-						disabled={isSharing || isLoadingInitialData}
-						className="flex h-6 items-center gap-1 px-2 text-xs"
-					>
-						<Share2 className="h-3 w-3" />
-						{isSharing ? "Sharing..." : "Share"}
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleRestart}
-						disabled={isLoadingInitialData}
-						className="flex h-6 items-center gap-1 px-2 text-xs"
-					>
-						<RotateCcw className="h-3 w-3" />
-						Restart
-					</Button>
-				</div>
-			)}
+			{/* Graph Controls */}
+			<GraphControls
+				nodeCount={graphData.nodes.length}
+				linkCount={graphData.links.length}
+				isLoading={isLoadingInitialData}
+				isSharing={isSharing}
+				onShare={handleShare}
+				onRestart={handleRestart}
+			/>
 
 			{/* Share Success Notification */}
-			{showShareSuccess && (
-				<div className="absolute top-16 left-4 z-20 rounded-lg border border-accent bg-accent px-3 py-2 shadow-lg">
-					<div className="font-medium text-accent-foreground text-xs">
-						✅ Rabbit hole shared! Link copied to clipboard
-					</div>
-				</div>
-			)}
+			<ShareSuccessNotification isVisible={showShareSuccess} />
 
 			{/* Share Modal */}
-			{showShareModal && (
-				<div className="fixed inset-0 z-40 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-					<div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-2xl">
-						<div className="mb-4">
-							<h2 className="font-semibold text-card-foreground text-lg">
-								Share Rabbit Hole
-							</h2>
-							<p className="text-muted-foreground text-sm">
-								Create a shareable link for your Wikipedia exploration
-							</p>
-						</div>
-
-						<div className="space-y-4">
-							<div>
-								<label
-									htmlFor="share-title"
-									className="mb-2 block font-medium text-card-foreground text-sm"
-								>
-									Rabbit Hole Name *
-								</label>
-								<Input
-									id="share-title"
-									value={shareTitle}
-									onChange={(e) => setShareTitle(e.target.value)}
-									placeholder="Enter a name for your rabbit hole"
-									className="w-full"
-								/>
-							</div>
-
-							<div>
-								<label
-									htmlFor="share-author"
-									className="mb-2 block font-medium text-card-foreground text-sm"
-								>
-									Your Name (optional)
-								</label>
-								<Input
-									id="share-author"
-									value={shareAuthor}
-									onChange={(e) => setShareAuthor(e.target.value)}
-									placeholder="Enter your name"
-									className="w-full"
-								/>
-							</div>
-
-							<div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/30">
-								<p className="text-amber-800 text-sm dark:text-amber-200">
-									⚠️ Rabbit holes are automatically deleted after 14 days of no
-									new visitors to keep the service running smoothly.
-								</p>
-							</div>
-						</div>
-
-						<div className="mt-6 flex justify-end gap-3">
-							<Button
-								variant="outline"
-								onClick={() => setShowShareModal(false)}
-								disabled={isSharing}
-							>
-								Cancel
-							</Button>
-							<Button
-								onClick={handleShareSubmit}
-								disabled={isSharing || !shareTitle.trim()}
-							>
-								{isSharing ? "Sharing..." : "Share Rabbit Hole"}
-							</Button>
-						</div>
-					</div>
-				</div>
-			)}
+			<ShareModal
+				isOpen={showShareModal}
+				onClose={() => setShowShareModal(false)}
+				shareTitle={shareTitle}
+				setShareTitle={setShareTitle}
+				shareAuthor={shareAuthor}
+				setShareAuthor={setShareAuthor}
+				onSubmit={handleShareSubmit}
+				isSharing={isSharing}
+			/>
 
 			{/* Graph Canvas Component */}
 			<WikipediaGraphCanvas
