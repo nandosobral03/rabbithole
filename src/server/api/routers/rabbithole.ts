@@ -45,44 +45,31 @@ export const rabbitholeRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      try {
-        console.log("Starting share mutation with", {
-          nodeCount: input.graphData.nodes.length,
-          linkCount: input.graphData.links.length,
-        });
+      const id = nanoid(12); // Generate a short, URL-friendly ID
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 1 week from now
 
-        const id = nanoid(12); // Generate a short, URL-friendly ID
-        const now = new Date();
-        const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 1 week from now
+      const { graphData } = input;
+      const nodeCount = graphData.nodes.length;
+      const linkCount = graphData.links.length;
 
-        const { graphData } = input;
-        const nodeCount = graphData.nodes.length;
-        const linkCount = graphData.links.length;
+      // Save the rabbit hole
+      await ctx.db.insert(sharedRabbitholes).values({
+        id,
+        title: input.title,
+        creatorName: input.creatorName,
+        description: input.description,
+        graphData: JSON.stringify(input.graphData),
+        expiresAt,
+        lastAccessedAt: now,
+        nodeCount,
+        linkCount,
+      });
 
-        console.log("Inserting shared rabbithole...");
-        // Save the rabbit hole
-        await ctx.db.insert(sharedRabbitholes).values({
-          id,
-          title: input.title,
-          creatorName: input.creatorName,
-          description: input.description,
-          graphData: JSON.stringify(input.graphData),
-          expiresAt,
-          lastAccessedAt: now,
-          nodeCount,
-          linkCount,
-        });
+      // Collect analytics data
+      await collectAnalytics(ctx.db, id, graphData);
 
-        console.log("Shared rabbithole inserted, collecting analytics...");
-        // Collect analytics data
-        await collectAnalytics(ctx.db, id, graphData);
-
-        console.log("Analytics collected successfully");
-        return { id, expiresAt };
-      } catch (error) {
-        console.error("Share mutation failed:", error);
-        throw error;
-      }
+      return { id, expiresAt };
     }),
 
   // Load a shared rabbit hole by ID

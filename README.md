@@ -1,29 +1,40 @@
-# Create T3 App
+# Rabbithole: Wikipedia Graph Explorer
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+Rabbithole transforms the way people explore Wikipedia by turning the linear experience of following article links into beautiful, interactive graph visualizations. Instead of losing track of where you started or how you got there, users can see their entire exploration journey laid out as a dynamic network of interconnected knowledge.
 
-## What's next? How do I make an app with this?
+The idea is to improve the experience of losing one's self down a wikipedia rabbit hole by providing a visual representation of the journey as well as allowing users to save and share their most interesting rabbit holes with others.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## What It Does
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+Users start by searching for any Wikipedia article, which becomes the first node in their graph. As they click on links within articles, new nodes are added and connected, building a visual map of their exploration. The graph uses physics simulation to naturally cluster related topics while maintaining readability.
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+The interface supports different interaction patterns:
 
-## Learn More
+- **Left click** on links to follow them and switch to that article
+- **Middle click** to add articles to the graph without switching view
+- **Right click** to remove nodes from the graph
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+Each rabbit hole can be saved and shared with others via unique URLs, complete with custom titles and descriptions. The application also tracks analytics across all shared rabbit holes, revealing popular articles, common connection patterns, and trending exploration paths.
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+## Technical Implementation
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+The project is built on the T3 Stack with Next.js 15, React 19, and tRPC for complete type safety across the entire application. The graph visualization is powered by react-force-graph-2d, which handles the force-directed layout and interactive controls.
 
-## How do I deploy this?
+For the backend, tRPC provides end-to-end type safety between the client and server. The database uses Drizzle ORM with SQLite for development and Turso for production. The analytics tables are carefully indexed to support complex queries about article popularity and connection patterns.
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+The Wikipedia integration fetches articles through their REST API, with smart caching strategies to avoid hitting rate limits. DOMPurify safely renders Wikipedia's HTML content, and sophisticated link parsing detects and creates connections between articles already in the graph.
+
+## Key Features
+
+- **Interactive force-directed graph** that naturally clusters related concepts
+- **Smart duplicate prevention** and automatic connection detection between existing nodes
+- **Responsive design** that adapts from mobile exploration to desktop analysis
+- **Real-time loading states** and smooth animations for optimal user experience
+- **Shareable rabbit holes** with persistent URLs and metadata
+- **Community analytics** showing popular articles and connection patterns
+- **Navigation history** with back button functionality
+- **Featured content integration** with Wikipedia's daily highlights
+
+---
+
+Rabbithole represents a novel approach to knowledge exploration, transforming the chaotic beauty of Wikipedia browsing into structured, shareable, and visually compelling learning experiences.
