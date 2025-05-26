@@ -15,7 +15,7 @@ export function ZoomControls({
 	disabled = false,
 }: ZoomControlsProps) {
 	return (
-		<div className="absolute right-4 bottom-4 z-10 flex flex-col gap-2 rounded-lg border border-border bg-card p-2 shadow-lg">
+		<div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2 rounded-lg border border-border bg-card p-2 shadow-lg">
 			<Button
 				variant="outline"
 				size="sm"

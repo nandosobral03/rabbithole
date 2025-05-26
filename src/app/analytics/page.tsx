@@ -5,9 +5,11 @@ import {
 	BarChart3,
 	ExternalLink,
 	Globe,
+	LocateFixed,
 	TrendingUp,
 	Users,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
@@ -43,7 +45,13 @@ export default function AnalyticsPage() {
 					<div className="flex items-center justify-between">
 						<div>
 							<h1 className="flex items-center gap-2 font-bold text-2xl text-foreground">
-								<BarChart3 className="h-6 w-6 text-primary" />
+								<Image
+									src="/icon.png"
+									alt="rabbithole icon"
+									width={32}
+									height={32}
+									className="h-8 w-8"
+								/>
 								rabbithole
 							</h1>
 							<p className="mt-1 text-muted-foreground">
@@ -103,28 +111,43 @@ export default function AnalyticsPage() {
 								key={article.id}
 								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
 							>
-								<div className="flex items-center gap-3">
-									<div className="flex h-6 w-6 items-center justify-center rounded-full bg-chart-1/10 font-medium text-chart-1 text-sm">
+								<div className="flex flex-grow items-center gap-3 overflow-hidden">
+									<div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-chart-1/10 font-medium text-chart-1 text-sm">
 										{index + 1}
 									</div>
-									<div>
-										<h4 className="max-w-xs truncate font-medium text-foreground">
+									<div className="flex-grow overflow-hidden">
+										<h4 className="truncate font-medium text-foreground">
 											{article.articleTitle}
 										</h4>
-										<p className="text-muted-foreground text-sm">
+										<p className="truncate text-muted-foreground text-sm">
 											{article.totalAppearances} rabbit holes •{" "}
 											{article.totalConnections} total connections
 										</p>
 									</div>
 								</div>
-								<a
-									href={article.articleUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-chart-1 hover:text-chart-1/80"
-								>
-									<ExternalLink className="h-4 w-4" />
-								</a>
+								<div className="ml-2 flex flex-shrink-0 items-center gap-2">
+									<Link
+										href={`/rabbithole?search=${encodeURIComponent(article.articleTitle)}`}
+										title="Start rabbit hole"
+									>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
+										>
+											<LocateFixed className="h-4 w-4" />
+										</Button>
+									</Link>
+									<a
+										href={article.articleUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-chart-1 hover:text-chart-1/80"
+										title="View on Wikipedia"
+									>
+										<ExternalLink className="h-4 w-4" />
+									</a>
+								</div>
 							</div>
 						))}
 					</AnalyticsSection>
@@ -140,28 +163,43 @@ export default function AnalyticsPage() {
 								key={article.id}
 								className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
 							>
-								<div className="flex items-center gap-3">
-									<div className="flex h-6 w-6 items-center justify-center rounded-full bg-chart-2/10 font-medium text-chart-2 text-sm">
+								<div className="flex flex-grow items-center gap-3 overflow-hidden">
+									<div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-chart-2/10 font-medium text-chart-2 text-sm">
 										{index + 1}
 									</div>
-									<div>
-										<h4 className="max-w-xs truncate font-medium text-foreground">
+									<div className="flex-grow overflow-hidden">
+										<h4 className="truncate font-medium text-foreground">
 											{article.articleTitle}
 										</h4>
-										<p className="text-muted-foreground text-sm">
+										<p className="truncate text-muted-foreground text-sm">
 											{article.averageConnections.toFixed(1)} avg connections •{" "}
 											{article.totalAppearances} appearances
 										</p>
 									</div>
 								</div>
-								<a
-									href={article.articleUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="text-chart-2 hover:text-chart-2/80"
-								>
-									<ExternalLink className="h-4 w-4" />
-								</a>
+								<div className="ml-2 flex flex-shrink-0 items-center gap-2">
+									<Link
+										href={`/rabbithole?search=${encodeURIComponent(article.articleTitle)}`}
+										title="Start rabbit hole"
+									>
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-7 w-7 text-primary hover:bg-primary/10 hover:text-primary"
+										>
+											<LocateFixed className="h-4 w-4" />
+										</Button>
+									</Link>
+									<a
+										href={article.articleUrl}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-chart-2 hover:text-chart-2/80"
+										title="View on Wikipedia"
+									>
+										<ExternalLink className="h-4 w-4" />
+									</a>
+								</div>
 							</div>
 						))}
 					</AnalyticsSection>
