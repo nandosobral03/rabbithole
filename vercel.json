@@ -3,11 +3,6 @@
   "installCommand": "bun install",
   "framework": "nextjs",
   "regions": ["iad1"],
-  "functions": {
-    "app/**/*.{js,ts,tsx}": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "env": {
     "NODE_ENV": "production"
   }
