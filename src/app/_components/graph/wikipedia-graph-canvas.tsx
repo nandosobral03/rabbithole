@@ -14,6 +14,7 @@ interface WikipediaGraphCanvasProps {
   onNodeClick: (node: GraphNode) => void;
   onBackgroundClick: () => void;
   onNodeRightClick?: (node: GraphNode) => void;
+  selectedNodeId?: string | null;
 }
 
 export interface GraphCanvasRef {
@@ -22,7 +23,7 @@ export interface GraphCanvasRef {
   zoomReset: () => void;
 }
 
-export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCanvasProps>(({ graphData, onNodeClick, onBackgroundClick, onNodeRightClick }, ref) => {
+export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCanvasProps>(({ graphData, onNodeClick, onBackgroundClick, onNodeRightClick, selectedNodeId }, ref) => {
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   const graphRef = useRef<any>(null);
 
@@ -123,6 +124,10 @@ export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCan
         backgroundColor="transparent"
         linkCanvasObjectMode="after"
         nodeAutoColorBy="color"
+        linkColor={() => {
+          const isDarkMode = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+          return isDarkMode ? "#777" : "#333";
+        }}
         linkCanvasObject={(
           // biome-ignore lint/suspicious/noExplicitAny: <explanation>
           link: any,
@@ -158,9 +163,7 @@ export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCan
             x: end.x - ux * (endRadius + 2),
             y: end.y - uy * (endRadius + 2),
           };
-
-          // Draw the link line
-          ctx.strokeStyle = "#999";
+          ctx.strokeStyle = "#333";
           ctx.lineWidth = 2.5 / globalScale;
           ctx.beginPath();
           ctx.moveTo(arrowStart.x, arrowStart.y);
@@ -173,7 +176,6 @@ export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCan
 
           const angle = Math.atan2(dy, dx);
 
-          ctx.fillStyle = "#666";
           ctx.beginPath();
           ctx.moveTo(arrowEnd.x, arrowEnd.y);
           ctx.lineTo(arrowEnd.x - arrowLength * Math.cos(angle - arrowAngle), arrowEnd.y - arrowLength * Math.sin(angle - arrowAngle));
@@ -192,18 +194,20 @@ export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCan
           const label = node.title;
           const fontSize = 12 / globalScale;
           const nodeRadius = node.val;
+          const isSelected = selectedNodeId === node.id;
 
           ctx.font = `${fontSize}px Sans-Serif`;
 
-          // Draw node circle
+          // Draw node circle - use chart-3 color for selected node
           ctx.beginPath();
           ctx.arc(node.x, node.y, nodeRadius, 0, 2 * Math.PI, false);
-          ctx.fillStyle = node.color;
+          ctx.fillStyle = isSelected ? "oklch(0.7077 0.163 42.2)" : node.color; // Use chart-3 color for selected
           ctx.fill();
 
-          // Add border for expanded nodes
-          if (node.expanded) {
-            ctx.strokeStyle = "#333";
+          // Add border for expanded nodes or selected nodes
+          if (node.expanded || isSelected) {
+            const isDarkMode = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
+            ctx.strokeStyle = isDarkMode ? "#777" : "#333";
             ctx.lineWidth = 2 / globalScale;
             ctx.stroke();
           }
@@ -212,7 +216,7 @@ export const WikipediaGraphCanvas = forwardRef<GraphCanvasRef, WikipediaGraphCan
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           const isDarkMode = typeof document !== "undefined" && document.documentElement.classList.contains("dark");
-          ctx.fillStyle = isDarkMode ? "#fff" : "#333";
+          ctx.fillStyle = isDarkMode ? "#777" : "#333";
           ctx.fillText(label, node.x, node.y + nodeRadius + fontSize * 1.2);
         }}
       />

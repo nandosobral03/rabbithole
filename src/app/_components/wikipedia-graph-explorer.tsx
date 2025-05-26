@@ -806,7 +806,7 @@ export function WikipediaGraphExplorer({ initialGraphData, initialSearchQuery, o
       />
 
       {/* Graph Canvas Component */}
-      <WikipediaGraphCanvas ref={graphCanvasRef} graphData={graphData} onNodeClick={handleNodeClick} onBackgroundClick={handleBackgroundClick} onNodeRightClick={handleNodeRightClick} />
+      <WikipediaGraphCanvas ref={graphCanvasRef} graphData={graphData} onNodeClick={handleNodeClick} onBackgroundClick={handleBackgroundClick} onNodeRightClick={handleNodeRightClick} selectedNodeId={selectedNode?.id || null} />
 
       {/* Zoom Controls */}
       {graphData.nodes.length > 0 && <ZoomControls onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onZoomReset={handleZoomReset} disabled={isLoadingInitialData} />}
