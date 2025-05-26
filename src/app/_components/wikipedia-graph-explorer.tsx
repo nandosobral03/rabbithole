@@ -29,7 +29,16 @@ export function WikipediaGraphExplorer({ initialGraphData, initialSearchQuery, o
     nodes: [],
     links: [],
   });
-  const [panelWidth, setPanelWidth] = useState(900);
+  // Responsive panel width - smaller on mobile, larger on desktop
+  const [panelWidth, setPanelWidth] = useState(() => {
+    if (typeof window !== "undefined") {
+      const screenWidth = window.innerWidth;
+      if (screenWidth < 640) return Math.min(screenWidth - 32, 400); // Mobile: screen width - padding, max 320px
+      if (screenWidth < 1024) return Math.min(screenWidth * 0.6, 500); // Tablet: 60% of screen, max 500px
+      return 900; // Desktop: 900px
+    }
+    return 900; // SSR fallback
+  });
   const [loadingLinks, setLoadingLinks] = useState<Set<string>>(new Set());
   const [shouldGlowHome, setShouldGlowHome] = useState(false);
 
@@ -112,6 +121,27 @@ export function WikipediaGraphExplorer({ initialGraphData, initialSearchQuery, o
       }
     };
   }, [selectedNode, isDetailPanelOpen, navigationHistory, graphData, goBackToParent, clearSelection]);
+
+  // Handle window resize for responsive panel width
+  useEffect(() => {
+    const handleResize = () => {
+      const screenWidth = window.innerWidth;
+      let newWidth: number;
+
+      if (screenWidth < 640) {
+        newWidth = Math.min(screenWidth - 32, 320); // Mobile: screen width - padding, max 320px
+      } else if (screenWidth < 1024) {
+        newWidth = Math.min(screenWidth * 0.6, 500); // Tablet: 60% of screen, max 500px
+      } else {
+        newWidth = 900; // Desktop: 900px
+      }
+
+      setPanelWidth(newWidth);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const addNodeToGraph = useCallback(
     (pageData: WikipediaFullPageData, isRoot = false) => {
@@ -607,6 +637,9 @@ export function WikipediaGraphExplorer({ initialGraphData, initialSearchQuery, o
 
   const handlePanelResize = useCallback(
     (e: React.MouseEvent) => {
+      // Don't allow resizing on mobile (when panel width is small)
+      if (panelWidth <= 400) return;
+
       e.preventDefault();
       const startX = e.clientX;
       const startWidth = panelWidth;
