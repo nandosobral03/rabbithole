@@ -4,276 +4,324 @@ import DOMPurify from "dompurify";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface WikipediaArticleViewerProps {
-  htmlContent: string;
-  title: string;
-  onLinkClick?: (title: string) => void;
-  onMiddleClick?: (title: string) => void;
-  loadingLinks?: Set<string>;
+	htmlContent: string;
+	title: string;
+	onLinkClick?: (title: string) => void;
+	onMiddleClick?: (title: string) => void;
+	loadingLinks?: Set<string>;
 }
 
 // Memoize the article title extraction logic
 const extractArticleTitle = (href: string): string => {
-  if (href.startsWith("./")) {
-    return decodeURIComponent(href.replace("./", "")).replace(/_/g, " ");
-  }
-  if (href.startsWith("/wiki/")) {
-    return decodeURIComponent(href.replace("/wiki/", "")).replace(/_/g, " ");
-  }
-  if (href.includes("wikipedia.org/wiki/")) {
-    const match = href.match(/\/wiki\/([^#?]+)/);
-    if (match?.[1]) {
-      return decodeURIComponent(match[1]).replace(/_/g, " ");
-    }
-  }
-  return "";
+	if (href.startsWith("./")) {
+		return decodeURIComponent(href.replace("./", "")).replace(/_/g, " ");
+	}
+	if (href.startsWith("/wiki/")) {
+		return decodeURIComponent(href.replace("/wiki/", "")).replace(/_/g, " ");
+	}
+	if (href.includes("wikipedia.org/wiki/")) {
+		const match = href.match(/\/wiki\/([^#?]+)/);
+		if (match?.[1]) {
+			return decodeURIComponent(match[1]).replace(/_/g, " ");
+		}
+	}
+	return "";
 };
 
 // Check if a link is a Wikipedia link
 const isWikipediaLink = (href: string): boolean => {
-  return href.startsWith("./") || href.startsWith("/wiki/") || href.includes("wikipedia.org/wiki/");
+	return (
+		href.startsWith("./") ||
+		href.startsWith("/wiki/") ||
+		href.includes("wikipedia.org/wiki/")
+	);
 };
 
 // Check if a link is an image file
 const isImageFile = (href: string): boolean => {
-  const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp", ".bmp", ".tiff"];
-  const lowercaseHref = href.toLowerCase();
-  return imageExtensions.some((ext) => lowercaseHref.includes(ext));
+	const imageExtensions = [
+		".jpg",
+		".jpeg",
+		".png",
+		".gif",
+		".svg",
+		".webp",
+		".bmp",
+		".tiff",
+	];
+	const lowercaseHref = href.toLowerCase();
+	return imageExtensions.some((ext) => lowercaseHref.includes(ext));
 };
 
-export function WikipediaArticleViewer({ htmlContent, title, onLinkClick, onMiddleClick, loadingLinks }: WikipediaArticleViewerProps) {
-  const [sanitizedHtml, setSanitizedHtml] = useState("");
+export function WikipediaArticleViewer({
+	htmlContent,
+	title,
+	onLinkClick,
+	onMiddleClick,
+	loadingLinks,
+}: WikipediaArticleViewerProps) {
+	const [sanitizedHtml, setSanitizedHtml] = useState("");
 
-  // Memoize the DOMPurify configuration
-  const purifyConfig = useMemo(
-    () => ({
-      ALLOWED_TAGS: [
-        "div",
-        "p",
-        "span",
-        "a",
-        "h1",
-        "h2",
-        "h3",
-        "h4",
-        "h5",
-        "h6",
-        "ul",
-        "ol",
-        "li",
-        "table",
-        "thead",
-        "tbody",
-        "tr",
-        "td",
-        "th",
-        "blockquote",
-        "em",
-        "strong",
-        "b",
-        "i",
-        "u",
-        "s",
-        "br",
-        "hr",
-        "img",
-        "figure",
-        "figcaption",
-        "caption",
-        "dl",
-        "dt",
-        "dd",
-        "section",
-        "article",
-        "aside",
-        "nav",
-        "header",
-        "footer",
-        "sup",
-        "sub",
-        "cite",
-        "code",
-        "pre",
-        "kbd",
-        "samp",
-        "var",
-      ],
-      ALLOWED_ATTR: ["class", "id", "href", "title", "alt", "src", "width", "height", "data-*", "aria-*", "role", "tabindex", "colspan", "rowspan"],
-      FORBID_TAGS: ["script", "style", "iframe", "object", "embed"],
-      FORBID_ATTR: ["onclick", "onerror", "onload", "onmouseover"],
-      KEEP_CONTENT: true,
-      ALLOW_DATA_ATTR: true,
-    }),
-    []
-  );
+	// Memoize the DOMPurify configuration
+	const purifyConfig = useMemo(
+		() => ({
+			ALLOWED_TAGS: [
+				"div",
+				"p",
+				"span",
+				"a",
+				"h1",
+				"h2",
+				"h3",
+				"h4",
+				"h5",
+				"h6",
+				"ul",
+				"ol",
+				"li",
+				"table",
+				"thead",
+				"tbody",
+				"tr",
+				"td",
+				"th",
+				"blockquote",
+				"em",
+				"strong",
+				"b",
+				"i",
+				"u",
+				"s",
+				"br",
+				"hr",
+				"img",
+				"figure",
+				"figcaption",
+				"caption",
+				"dl",
+				"dt",
+				"dd",
+				"section",
+				"article",
+				"aside",
+				"nav",
+				"header",
+				"footer",
+				"sup",
+				"sub",
+				"cite",
+				"code",
+				"pre",
+				"kbd",
+				"samp",
+				"var",
+			],
+			ALLOWED_ATTR: [
+				"class",
+				"id",
+				"href",
+				"title",
+				"alt",
+				"src",
+				"width",
+				"height",
+				"data-*",
+				"aria-*",
+				"role",
+				"tabindex",
+				"colspan",
+				"rowspan",
+			],
+			FORBID_TAGS: ["script", "style", "iframe", "object", "embed"],
+			FORBID_ATTR: ["onclick", "onerror", "onload", "onmouseover"],
+			KEEP_CONTENT: true,
+			ALLOW_DATA_ATTR: true,
+		}),
+		[],
+	);
 
-  // Memoize the sanitized HTML to avoid re-sanitizing on every render
-  const memoizedSanitizedHtml = useMemo(() => {
-    if (typeof window === "undefined" || !htmlContent) return "";
-    return DOMPurify.sanitize(htmlContent, purifyConfig);
-  }, [htmlContent, purifyConfig]);
+	// Memoize the sanitized HTML to avoid re-sanitizing on every render
+	const memoizedSanitizedHtml = useMemo(() => {
+		if (typeof window === "undefined" || !htmlContent) return "";
+		return DOMPurify.sanitize(htmlContent, purifyConfig);
+	}, [htmlContent, purifyConfig]);
 
-  useEffect(() => {
-    setSanitizedHtml(memoizedSanitizedHtml);
-  }, [memoizedSanitizedHtml]);
+	useEffect(() => {
+		setSanitizedHtml(memoizedSanitizedHtml);
+	}, [memoizedSanitizedHtml]);
 
-  // Memoize the container ID to avoid recalculating
-  const containerId = useMemo(() => `wikipedia-content-${title.replace(/\s+/g, "-")}`, [title]);
+	// Memoize the container ID to avoid recalculating
+	const containerId = useMemo(
+		() => `wikipedia-content-${title.replace(/\s+/g, "-")}`,
+		[title],
+	);
 
-  // Optimized click handler
-  const handleLinkClick = useCallback(
-    (e: Event) => {
-      const target = e.target as HTMLElement;
-      const mouseEvent = e as MouseEvent;
-      const anchor = target.closest("a");
+	// Optimized click handler
+	const handleLinkClick = useCallback(
+		(e: Event) => {
+			const target = e.target as HTMLElement;
+			const mouseEvent = e as MouseEvent;
+			const anchor = target.closest("a");
 
-      if (!anchor) return;
+			if (!anchor) return;
 
-      const href = anchor.getAttribute("href");
-      if (!href) return;
+			const href = anchor.getAttribute("href");
+			if (!href) return;
 
-      // Check if it's an image file - let it open normally
-      if (isImageFile(href)) {
-        // Construct proper Wikipedia URL for image files
-        let imageUrl = href;
-        if (href.startsWith("./")) {
-          imageUrl = `https://en.wikipedia.org/wiki/${href.replace("./", "")}`;
-        } else if (href.startsWith("/wiki/")) {
-          imageUrl = `https://en.wikipedia.org${href}`;
-        }
+			// Check if it's an image file - let it open normally
+			if (isImageFile(href)) {
+				// Construct proper Wikipedia URL for image files
+				let imageUrl = href;
+				if (href.startsWith("./")) {
+					imageUrl = `https://en.wikipedia.org/wiki/${href.replace("./", "")}`;
+				} else if (href.startsWith("/wiki/")) {
+					imageUrl = `https://en.wikipedia.org${href}`;
+				}
 
-        anchor.setAttribute("href", imageUrl);
-        anchor.setAttribute("target", "_blank");
-        anchor.setAttribute("rel", "noopener noreferrer");
-        return;
-      }
+				anchor.setAttribute("href", imageUrl);
+				anchor.setAttribute("target", "_blank");
+				anchor.setAttribute("rel", "noopener noreferrer");
+				return;
+			}
 
-      // Check if it's a Wikipedia link
-      if (!isWikipediaLink(href)) {
-        // External link - ensure it opens in new tab
-        anchor.setAttribute("target", "_blank");
-        anchor.setAttribute("rel", "noopener noreferrer");
-        return;
-      }
+			// Check if it's a Wikipedia link
+			if (!isWikipediaLink(href)) {
+				// External link - ensure it opens in new tab
+				anchor.setAttribute("target", "_blank");
+				anchor.setAttribute("rel", "noopener noreferrer");
+				return;
+			}
 
-      // Wikipedia link - prevent default and handle custom logic
-      e.preventDefault();
-      e.stopPropagation();
+			// Wikipedia link - prevent default and handle custom logic
+			e.preventDefault();
+			e.stopPropagation();
 
-      const articleTitle = extractArticleTitle(href);
-      if (!articleTitle?.trim()) return;
+			const articleTitle = extractArticleTitle(href);
+			if (!articleTitle?.trim()) return;
 
-      // Handle middle click vs regular click
-      if (mouseEvent.button === 1 && onMiddleClick) {
-        onMiddleClick(articleTitle);
-      } else if (onLinkClick) {
-        onLinkClick(articleTitle);
-      }
-    },
-    [onLinkClick, onMiddleClick]
-  );
+			// Handle middle click vs regular click
+			if (mouseEvent.button === 1 && onMiddleClick) {
+				onMiddleClick(articleTitle);
+			} else if (onLinkClick) {
+				onLinkClick(articleTitle);
+			}
+		},
+		[onLinkClick, onMiddleClick],
+	);
 
-  // Handle middle clicks
-  const handleAuxClick = useCallback(
-    (e: Event) => {
-      const mouseEvent = e as MouseEvent;
-      if (mouseEvent.button === 1) {
-        handleLinkClick(e);
-      }
-    },
-    [handleLinkClick]
-  );
+	// Handle middle clicks
+	const handleAuxClick = useCallback(
+		(e: Event) => {
+			const mouseEvent = e as MouseEvent;
+			if (mouseEvent.button === 1) {
+				handleLinkClick(e);
+			}
+		},
+		[handleLinkClick],
+	);
 
-  // Prevent default middle-click behavior
-  const handleMouseDown = useCallback((e: Event) => {
-    const mouseEvent = e as MouseEvent;
-    const target = e.target as HTMLElement;
-    const anchor = target.closest("a");
+	// Prevent default middle-click behavior
+	const handleMouseDown = useCallback((e: Event) => {
+		const mouseEvent = e as MouseEvent;
+		const target = e.target as HTMLElement;
+		const anchor = target.closest("a");
 
-    if (anchor && mouseEvent.button === 1) {
-      const href = anchor.getAttribute("href");
-      if (href && isWikipediaLink(href) && !isImageFile(href)) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    }
-  }, []);
+		if (anchor && mouseEvent.button === 1) {
+			const href = anchor.getAttribute("href");
+			if (href && isWikipediaLink(href) && !isImageFile(href)) {
+				e.preventDefault();
+				e.stopPropagation();
+			}
+		}
+	}, []);
 
-  // Set up event listeners
-  useEffect(() => {
-    if (!sanitizedHtml || !onLinkClick) return;
+	// Set up event listeners
+	useEffect(() => {
+		if (!sanitizedHtml || !onLinkClick) return;
 
-    const container = document.getElementById(containerId);
-    if (!container) return;
+		const container = document.getElementById(containerId);
+		if (!container) return;
 
-    container.addEventListener("click", handleLinkClick, true);
-    container.addEventListener("auxclick", handleAuxClick, true);
-    container.addEventListener("mousedown", handleMouseDown, true);
+		container.addEventListener("click", handleLinkClick, true);
+		container.addEventListener("auxclick", handleAuxClick, true);
+		container.addEventListener("mousedown", handleMouseDown, true);
 
-    return () => {
-      container.removeEventListener("click", handleLinkClick, true);
-      container.removeEventListener("auxclick", handleAuxClick, true);
-      container.removeEventListener("mousedown", handleMouseDown, true);
-    };
-  }, [sanitizedHtml, onLinkClick, containerId, handleLinkClick, handleAuxClick, handleMouseDown]);
+		return () => {
+			container.removeEventListener("click", handleLinkClick, true);
+			container.removeEventListener("auxclick", handleAuxClick, true);
+			container.removeEventListener("mousedown", handleMouseDown, true);
+		};
+	}, [
+		sanitizedHtml,
+		onLinkClick,
+		containerId,
+		handleLinkClick,
+		handleAuxClick,
+		handleMouseDown,
+	]);
 
-  // Simple loading state for individual links
-  useEffect(() => {
-    if (!sanitizedHtml || !loadingLinks || loadingLinks.size === 0) return;
+	// Simple loading state for individual links
+	useEffect(() => {
+		if (!sanitizedHtml || !loadingLinks || loadingLinks.size === 0) return;
 
-    const container = document.getElementById(containerId);
-    if (!container) return;
+		const container = document.getElementById(containerId);
+		if (!container) return;
 
-    const links = container.querySelectorAll("a[href]") as NodeListOf<HTMLAnchorElement>;
+		const links = container.querySelectorAll(
+			"a[href]",
+		) as NodeListOf<HTMLAnchorElement>;
 
-    for (const link of links) {
-      const href = link.getAttribute("href");
-      if (!href || !isWikipediaLink(href)) continue;
+		for (const link of links) {
+			const href = link.getAttribute("href");
+			if (!href || !isWikipediaLink(href)) continue;
 
-      const articleTitle = extractArticleTitle(href);
-      if (articleTitle && loadingLinks.has(articleTitle)) {
-        link.style.opacity = "0.6";
-        link.style.pointerEvents = "none";
-        link.style.cursor = "wait";
-      } else {
-        link.style.opacity = "";
-        link.style.pointerEvents = "";
-        link.style.cursor = "";
-      }
-    }
-  }, [loadingLinks, containerId, sanitizedHtml]);
+			const articleTitle = extractArticleTitle(href);
+			if (articleTitle && loadingLinks.has(articleTitle)) {
+				link.style.opacity = "0.6";
+				link.style.pointerEvents = "none";
+				link.style.cursor = "wait";
+			} else {
+				link.style.opacity = "";
+				link.style.pointerEvents = "";
+				link.style.cursor = "";
+			}
+		}
+	}, [loadingLinks, containerId, sanitizedHtml]);
 
-  if (!sanitizedHtml) {
-    return <div className="text-muted-foreground">Loading article content...</div>;
-  }
+	if (!sanitizedHtml) {
+		return (
+			<div className="text-muted-foreground">Loading article content...</div>
+		);
+	}
 
-  return (
-    <div
-      id={containerId}
-      className="wikipedia-article-content prose prose-sm max-w-none dark:prose-invert"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-      style={
-        {
-          // Custom CSS to style Wikipedia content - theme aware
-          "--tw-prose-body": "hsl(var(--foreground))",
-          "--tw-prose-headings": "hsl(var(--foreground))",
-          "--tw-prose-links": "rgb(37 99 235)", // Keep link color consistent
-          "--tw-prose-bold": "hsl(var(--foreground))",
-          "--tw-prose-counters": "hsl(var(--muted-foreground))",
-          "--tw-prose-bullets": "hsl(var(--border))",
-          "--tw-prose-hr": "hsl(var(--border))",
-          "--tw-prose-quotes": "hsl(var(--muted-foreground))",
-          "--tw-prose-quote-borders": "hsl(var(--border))",
-          "--tw-prose-captions": "hsl(var(--muted-foreground))",
-          "--tw-prose-code": "hsl(var(--foreground))",
-          "--tw-prose-pre-code": "hsl(var(--muted-foreground))",
-          "--tw-prose-pre-bg": "hsl(var(--muted))",
-          "--tw-prose-th-borders": "hsl(var(--border))",
-          "--tw-prose-td-borders": "hsl(var(--border))",
-        } as React.CSSProperties
-      }
-    />
-  );
+	return (
+		<div
+			id={containerId}
+			className="wikipedia-article-content prose prose-sm dark:prose-invert max-w-none"
+			// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
+			dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+			style={
+				{
+					// Custom CSS to style Wikipedia content - theme aware
+					"--tw-prose-body": "hsl(var(--foreground))",
+					"--tw-prose-headings": "hsl(var(--foreground))",
+					"--tw-prose-links": "rgb(37 99 235)", // Keep link color consistent
+					"--tw-prose-bold": "hsl(var(--foreground))",
+					"--tw-prose-counters": "hsl(var(--muted-foreground))",
+					"--tw-prose-bullets": "hsl(var(--border))",
+					"--tw-prose-hr": "hsl(var(--border))",
+					"--tw-prose-quotes": "hsl(var(--muted-foreground))",
+					"--tw-prose-quote-borders": "hsl(var(--border))",
+					"--tw-prose-captions": "hsl(var(--muted-foreground))",
+					"--tw-prose-code": "hsl(var(--foreground))",
+					"--tw-prose-pre-code": "hsl(var(--muted-foreground))",
+					"--tw-prose-pre-bg": "hsl(var(--muted))",
+					"--tw-prose-th-borders": "hsl(var(--border))",
+					"--tw-prose-td-borders": "hsl(var(--border))",
+				} as React.CSSProperties
+			}
+		/>
+	);
 }
 
 // Add custom CSS for Wikipedia-specific styling
