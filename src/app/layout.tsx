@@ -6,7 +6,7 @@ import { Geist } from "next/font/google";
 import { getThemeFromCookies } from "~/lib/theme";
 import { TRPCReactProvider } from "~/trpc/react";
 import { ThemeProvider } from "./_components/providers/theme-provider";
-
+import { Analytics } from "@vercel/analytics/react";
 export const metadata: Metadata = {
   title: "rabbithole",
   description: "Explore Wikipedia rabbit holes and share them with the world",
@@ -31,6 +31,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <ThemeProvider defaultTheme={theme}>
           <TRPCReactProvider>{children}</TRPCReactProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );

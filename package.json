@@ -28,6 +28,7 @@
     "@trpc/react-query": "^11.0.0",
     "@trpc/server": "^11.0.0",
     "@types/dompurify": "^3.0.5",
+    "@vercel/analytics": "^1.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.2.6",
@@ -62,7 +63,7 @@
   },
   "optionalDependencies": {
     "@biomejs/cli-linux-x64": "^1.9.4",
-    "lightningcss-linux-x64-gnu": "^1.30.1",
-    "@libsql/linux-x64-gnu": "^0.5.11"
+    "@libsql/linux-x64-gnu": "^0.5.11",
+    "lightningcss-linux-x64-gnu": "^1.30.1"
   }
 }
