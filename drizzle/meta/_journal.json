@@ -15,6 +15,13 @@
       "when": 1748205172939,
       "tag": "0001_sticky_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1748259395364,
+      "tag": "0002_dapper_thena",
+      "breakpoints": true
     }
   ]
 }

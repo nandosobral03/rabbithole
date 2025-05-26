@@ -1,0 +1,1 @@
+DROP TABLE `rabbithole_post`;
