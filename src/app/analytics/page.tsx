@@ -1,49 +1,34 @@
-"use client";
-
 import { ArrowRight, BarChart3, ExternalLink, Globe, LocateFixed, TrendingUp, Users } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { Button } from "~/components/ui/button";
-import { api } from "~/trpc/react";
+import { api } from "~/trpc/server";
 import { AnalyticsSection } from "../_components/analytics/analytics-section";
 import { StatCard } from "../_components/analytics/stat-card";
+import { AnalyticsHeader } from "../_components/analytics/analytics-header";
 
-export default function AnalyticsPage() {
-  const { data: stats, isLoading: statsLoading } = api.rabbithole.getRabbitholeStats.useQuery();
-  const { data: popularArticles, isLoading: articlesLoading } = api.rabbithole.getPopularArticles.useQuery({ limit: 10 });
-  const { data: connectedArticles, isLoading: connectedLoading } = api.rabbithole.getMostConnectedArticles.useQuery({ limit: 10 });
-  const { data: popularConnections, isLoading: connectionsLoading } = api.rabbithole.getPopularConnections.useQuery({ limit: 10 });
+export const metadata: Metadata = {
+  title: "Analytics | rabbithole",
+  description: "Discover patterns and insights from shared Wikipedia rabbit holes. Explore the most popular articles, connections, and statistics from the rabbithole community.",
+  keywords: ["wikipedia", "analytics", "data", "insights", "rabbit holes", "statistics"],
+};
 
-  if (statsLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background font-chillax">
-        <div className="text-center">
-          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-primary border-b-2" />
-          <p className="text-muted-foreground">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
+// Revalidate every 5 minutes for fresh analytics data
+export const revalidate = 300;
+
+export default async function AnalyticsPage() {
+  // Fetch all data server-side in parallel
+  const [stats, popularArticles, connectedArticles, popularConnections] = await Promise.all([
+    api.rabbithole.getRabbitholeStats(),
+    api.rabbithole.getPopularArticles({ limit: 10 }),
+    api.rabbithole.getMostConnectedArticles({ limit: 10 }),
+    api.rabbithole.getPopularConnections({ limit: 10 }),
+  ]);
 
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <div className="border-border border-b bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="flex items-center gap-2 font-bold text-2xl text-foreground">
-                <Image src="/icon.png" alt="rabbithole icon" width={32} height={32} className="h-8 w-8" />
-                rabbithole
-              </h1>
-              <p className="mt-1 text-muted-foreground">Discover patterns and insights from shared rabbit holes</p>
-            </div>
-            <Link href="/">
-              <Button variant="outline">Back to Explorer</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
+      <AnalyticsHeader />
 
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Overview Stats */}
@@ -57,7 +42,7 @@ export default function AnalyticsPage() {
         {/* Analytics Sections */}
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           {/* Most Popular Articles */}
-          <AnalyticsSection title="Most Popular Articles" subtitle="Articles that appear in the most rabbit holes" isLoading={articlesLoading}>
+          <AnalyticsSection title="Most Popular Articles" subtitle="Articles that appear in the most rabbit holes">
             {popularArticles?.map((article, index) => (
               <div key={article.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                 <div className="flex flex-grow items-center gap-3 overflow-hidden">
@@ -84,7 +69,7 @@ export default function AnalyticsPage() {
           </AnalyticsSection>
 
           {/* Most Connected Articles */}
-          <AnalyticsSection title="Most Connected Articles" subtitle="Articles with the highest average connections" isLoading={connectedLoading}>
+          <AnalyticsSection title="Most Connected Articles" subtitle="Articles with the highest average connections">
             {connectedArticles?.map((article, index) => (
               <div key={article.id} className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
                 <div className="flex flex-grow items-center gap-3 overflow-hidden">
@@ -111,7 +96,7 @@ export default function AnalyticsPage() {
           </AnalyticsSection>
 
           {/* Most Common Connections */}
-          <AnalyticsSection title="Most Common Connections" subtitle="Article pairs that are frequently linked together" isLoading={connectionsLoading} className="lg:col-span-2">
+          <AnalyticsSection title="Most Common Connections" subtitle="Article pairs that are frequently linked together" className="lg:col-span-2">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {popularConnections?.map((connection, index) => (
                 <div key={connection.id} className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">

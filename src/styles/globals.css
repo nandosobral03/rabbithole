@@ -193,4 +193,18 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+
+  /* Custom text selection colors */
+  ::selection {
+    background-color: oklch(0.7686 0.1647 70.0804);
+    color: oklch(0 0 0);
+  }
+
+  ::-moz-selection {
+    background-color: oklch(0.7686 0.1647 70.0804);
+    color: oklch(0 0 0);
+  }
+  img {
+    @apply select-none;
+  }
 }
